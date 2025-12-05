@@ -39,20 +39,23 @@ describe('Nested Hierarchy', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/nested-hierarchy.hcl');
 
-            expect($config->divisions())->toHaveCount(3);
-            expect($config->division('FI'))->not->toBeNull();
-            expect($config->division('SE'))->not->toBeNull();
-            expect($config->division('EE'))->not->toBeNull();
+            // Divisions are now partitions in the unified model
+            expect($config->partitions())->toHaveCount(3);
+            expect($config->partition('FI'))->not->toBeNull();
+            expect($config->partition('SE'))->not->toBeNull();
+            expect($config->partition('EE'))->not->toBeNull();
         });
 
         test('division has environments', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/nested-hierarchy.hcl');
 
-            $division = $config->division('FI');
+            $division = $config->partition('FI');
 
-            expect($division->environmentNames())->toContain('production');
-            expect($division->environmentNames())->toContain('staging');
+            // In unified model, environments are children of the partition
+            $envNames = \array_keys($division->children);
+            expect($envNames)->toContain('production');
+            expect($envNames)->toContain('staging');
         });
     });
 

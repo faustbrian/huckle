@@ -23,31 +23,34 @@ describe('Division loadEnv', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/divisions.hcl');
 
-            expect($config->divisions())->toHaveCount(3);
-            expect($config->division('FI'))->not->toBeNull();
-            expect($config->division('SE'))->not->toBeNull();
-            expect($config->division('EE'))->not->toBeNull();
+            // Divisions are now partitions in the unified model
+            expect($config->partitions())->toHaveCount(3);
+            expect($config->partition('FI'))->not->toBeNull();
+            expect($config->partition('SE'))->not->toBeNull();
+            expect($config->partition('EE'))->not->toBeNull();
         });
 
         test('division has environments', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/divisions.hcl');
 
-            $division = $config->division('FI');
+            $division = $config->partition('FI');
 
-            expect($division->environmentNames())->toContain('production');
+            // In the unified model, environments are children of the partition
+            expect(\array_keys($division->children))->toContain('production');
         });
     });
 
     describe('HuckleConfig', function (): void {
-        test('matchingDivisions returns only divisions matching context', function (): void {
+        test('matching returns only nodes matching context', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/divisions.hcl');
 
-            $matching = $config->matchingDivisions(['division' => 'FI']);
+            // 'division' context key maps to 'partition' in the unified model
+            $matching = $config->matching(['partition' => 'FI']);
 
-            expect($matching)->toHaveCount(1);
-            expect($matching->first()->name)->toBe('FI');
+            expect($matching)->not->toBeEmpty();
+            $matching->each(fn ($n) => expect($n->path[0])->toBe('FI'));
         });
 
         test('exportsForContext returns resolved exports for matching division', function (): void {
@@ -55,7 +58,7 @@ describe('Division loadEnv', function (): void {
             $config = $parser->parseFile(__DIR__.'/../Fixtures/divisions.hcl');
 
             $exports = $config->exportsForContext([
-                'division' => 'SE',
+                'partition' => 'SE',
                 'environment' => 'production',
                 'provider' => 'service_a',
             ]);
@@ -70,7 +73,7 @@ describe('Division loadEnv', function (): void {
             $parser = new HuckleParser();
             $config = $parser->parseFile(__DIR__.'/../Fixtures/divisions.hcl');
 
-            $exports = $config->exportsForContext(['division' => 'NO']);
+            $exports = $config->exportsForContext(['partition' => 'NO']);
 
             expect($exports)->toBe([]);
         });
@@ -80,7 +83,7 @@ describe('Division loadEnv', function (): void {
         test('loads FI division and sets env vars', function (): void {
             $manager = resolve(HuckleManager::class);
             $exports = $manager->loadEnv(__DIR__.'/../Fixtures/divisions.hcl', [
-                'division' => 'FI',
+                'partition' => 'FI',
                 'environment' => 'production',
                 'provider' => 'service_a',
             ]);
@@ -99,7 +102,7 @@ describe('Division loadEnv', function (): void {
         test('loads SE division and sets env vars', function (): void {
             $manager = resolve(HuckleManager::class);
             $exports = $manager->loadEnv(__DIR__.'/../Fixtures/divisions.hcl', [
-                'division' => 'SE',
+                'partition' => 'SE',
                 'environment' => 'production',
                 'provider' => 'service_a',
             ]);
@@ -116,7 +119,7 @@ describe('Division loadEnv', function (): void {
         test('loads EE division and sets env vars', function (): void {
             $manager = resolve(HuckleManager::class);
             $exports = $manager->loadEnv(__DIR__.'/../Fixtures/divisions.hcl', [
-                'division' => 'EE',
+                'partition' => 'EE',
                 'environment' => 'production',
                 'provider' => 'service_a',
             ]);
@@ -132,7 +135,7 @@ describe('Division loadEnv', function (): void {
 
         test('returns empty exports when no division matches', function (): void {
             $manager = resolve(HuckleManager::class);
-            $exports = $manager->loadEnv(__DIR__.'/../Fixtures/divisions.hcl', ['division' => 'NO']);
+            $exports = $manager->loadEnv(__DIR__.'/../Fixtures/divisions.hcl', ['partition' => 'NO']);
 
             expect($exports)->toBe([]);
             expect(getenv('SERVICE_A_CUSTOMER_NUMBER'))->toBeFalse();

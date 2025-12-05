@@ -39,7 +39,7 @@ describe('ExportCommand', function (): void {
         test('returns failure for non-existent credential path', function (): void {
             // Arrange & Act
             $this->artisan('huckle:export', ['path' => 'nonexistent.path.here'])
-                ->expectsOutputToContain('No credentials found matching the criteria.')
+                ->expectsOutputToContain('No nodes found matching the criteria.')
                 ->assertExitCode(1);
         });
     });
@@ -90,7 +90,7 @@ describe('ExportCommand', function (): void {
         test('filters credentials by group', function (): void {
             // Arrange & Act & Assert
             $this->artisan('huckle:export', [
-                '--group' => 'database',
+                '--partition' => 'database',
             ])
                 ->expectsOutputToContain('DB_HOST')
                 ->doesntExpectOutputToContain('AWS_ACCESS_KEY_ID')
@@ -127,7 +127,7 @@ describe('ExportCommand', function (): void {
         test('combines multiple filters', function (): void {
             // Arrange & Act & Assert
             $this->artisan('huckle:export', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--env' => 'production',
                 '--tag' => ['prod'],
             ])
@@ -140,9 +140,9 @@ describe('ExportCommand', function (): void {
         test('shows warning when no credentials match filters', function (): void {
             // Arrange & Act
             $this->artisan('huckle:export', [
-                '--group' => 'nonexistent-group',
+                '--partition' => 'nonexistent-group',
             ])
-                ->expectsOutput('No credentials found matching the criteria.')
+                ->expectsOutput('No nodes found matching the criteria.')
                 ->assertExitCode(1);
         });
 
@@ -151,7 +151,7 @@ describe('ExportCommand', function (): void {
             $this->artisan('huckle:export', [
                 '--tag' => ['nonexistent-tag'],
             ])
-                ->expectsOutput('No credentials found matching the criteria.')
+                ->expectsOutput('No nodes found matching the criteria.')
                 ->assertExitCode(1);
         });
 
@@ -160,7 +160,7 @@ describe('ExportCommand', function (): void {
             $this->artisan('huckle:export', [
                 '--env' => 'nonexistent-env',
             ])
-                ->expectsOutput('No credentials found matching the criteria.')
+                ->expectsOutput('No nodes found matching the criteria.')
                 ->assertExitCode(1);
         });
     });

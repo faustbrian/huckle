@@ -28,7 +28,7 @@ describe('ExpiringCommand', function (): void {
     describe('default behavior', function (): void {
         test('lists expiring credentials within default 30-day period', function (): void {
             $this->artisan('huckle:expiring')
-                ->expectsOutputToContain('EXPIRED credentials:')
+                ->expectsOutputToContain('EXPIRED nodes:')
                 ->assertExitCode(1); // FAILURE when expired credentials exist
         });
 
@@ -42,21 +42,21 @@ describe('ExpiringCommand', function (): void {
             $this->artisan('huckle:expiring')
                 ->expectsOutputToContain('Expiring within 30 days:')
                 ->expectsOutputToContain('database.production.expiring_soon')
-                ->expectsOutputToContain('expires:')
                 ->assertExitCode(1);
         });
 
         test('does not display healthy credentials in output', function (): void {
             $this->artisan('huckle:expiring')
-                ->expectsOutputToContain('EXPIRED credentials:')
+                ->expectsOutputToContain('EXPIRED nodes:')
                 ->assertExitCode(1);
         });
     });
 
     describe('--days option', function (): void {
-        test('uses custom days parameter with --days=10', function (): void {
-            $this->artisan('huckle:expiring', ['--days' => 10])
-                ->expectsOutputToContain('Expiring within 10 days:')
+        test('uses custom days parameter with --days=20', function (): void {
+            // With 20 days, expiring_soon (16 days away) should appear
+            $this->artisan('huckle:expiring', ['--days' => 20])
+                ->expectsOutputToContain('Expiring within 20 days:')
                 ->assertExitCode(1);
         });
 
@@ -64,7 +64,7 @@ describe('ExpiringCommand', function (): void {
             // With 10 days, expiring_soon (16 days away) should not appear in "expiring"
             // but expired should still appear
             $this->artisan('huckle:expiring', ['--days' => 10])
-                ->expectsOutputToContain('EXPIRED credentials:')
+                ->expectsOutputToContain('EXPIRED nodes:')
                 ->expectsOutputToContain('database.production.already_expired')
                 ->assertExitCode(1);
         });

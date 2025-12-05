@@ -10,6 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 
 use function addslashes;
@@ -27,10 +28,10 @@ use function str_contains;
 use function str_starts_with;
 
 /**
- * Synchronizes Huckle credentials to Laravel .env configuration file.
+ * Synchronizes Huckle nodes to Laravel .env configuration file.
  *
- * Exports credential values to .env format, supporting both merge and replace
- * modes. Provides filtering by group and environment, dry-run preview, and
+ * Exports node values to .env format, supporting both merge and replace
+ * modes. Provides filtering by partition and environment, dry-run preview, and
  * automatic value escaping for shell-safe environment variable formatting.
  *
  * @author Brian Faust <brian@cline.sh>
@@ -41,7 +42,7 @@ final class SyncCommand extends Command
      * The name and signature of the console command.
      *
      * Supports custom .env file paths, replacement mode, dry-run preview, and
-     * credential filtering by group or environment for selective synchronization.
+     * node filtering by partition or environment for selective synchronization.
      *
      * @var string
      */
@@ -49,7 +50,7 @@ final class SyncCommand extends Command
         {--path= : Path to .env file (defaults to base .env)}
         {--replace : Replace entire .env instead of merging}
         {--dry-run : Show what would be changed without writing}
-        {--group= : Filter by group name}
+        {--partition= : Filter by partition name}
         {--env= : Filter by environment}';
 
     /**
@@ -57,16 +58,16 @@ final class SyncCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Sync credentials to .env file';
+    protected $description = 'Sync nodes to .env file';
 
     /**
      * Execute the console command.
      *
-     * Retrieves filtered credentials, exports environment variables, merges or
+     * Retrieves filtered nodes, exports environment variables, merges or
      * replaces existing .env content, and writes the result. In dry-run mode,
      * displays changes without modifying the file.
      *
-     * @param HuckleManager $huckle The Huckle manager instance for credential retrieval
+     * @param HuckleManager $huckle The Huckle manager instance for node retrieval
      *
      * @return int Command exit code (SUCCESS or FAILURE)
      */
@@ -79,31 +80,31 @@ final class SyncCommand extends Command
         $replace = $this->option('replace');
         $dryRun = $this->option('dry-run');
 
-        /** @var null|string $group */
-        $group = $this->option('group');
+        /** @var null|string $partition */
+        $partition = $this->option('partition');
 
         /** @var null|string $env */
         $env = $this->option('env');
 
         // Get exports
-        $credentials = $huckle->credentials();
+        $nodes = $huckle->nodes();
 
-        if ($group !== null) {
-            $credentials = $credentials->filter(fn ($c): bool => $c->group === $group);
+        if ($partition !== null) {
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[0]) && $n->path[0] === $partition);
         }
 
         if ($env !== null) {
-            $credentials = $credentials->filter(fn ($c): bool => $c->environment === $env);
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[1]) && $n->path[1] === $env);
         }
 
         $exports = [];
 
-        foreach ($credentials as $credential) {
-            $exports = [...$exports, ...$credential->export()];
+        foreach ($nodes as $node) {
+            $exports = [...$exports, ...$node->export()];
         }
 
         if ($exports === []) {
-            $this->warn('No credentials found to sync.');
+            $this->warn('No nodes found to sync.');
 
             return self::FAILURE;
         }

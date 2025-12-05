@@ -49,7 +49,7 @@ describe('ConnectCommand', function (): void {
             $this->artisan('huckle:connect', [
                 'path' => 'nonexistent.path',
             ])
-                ->expectsOutput('Credential not found: nonexistent.path')
+                ->expectsOutput('Node not found: nonexistent.path')
                 ->assertFailed();
         });
 

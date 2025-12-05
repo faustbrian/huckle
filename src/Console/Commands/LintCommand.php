@@ -10,6 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
 
@@ -23,8 +24,8 @@ use function sprintf;
  * Artisan command to lint and validate Huckle configuration.
  *
  * Provides CLI interface for validating HCL configuration syntax and checking
- * credentials for security issues. Validates syntax, checks for expiring or
- * expired credentials, identifies credentials needing rotation, and verifies
+ * nodes for security issues. Validates syntax, checks for expiring or
+ * expired nodes, identifies nodes needing rotation, and verifies
  * file permissions. Helps maintain configuration quality and security compliance.
  *
  * @author Brian Faust <brian@cline.sh>
@@ -37,8 +38,8 @@ final class LintCommand extends Command
      * @var string
      */
     protected $signature = 'huckle:lint
-        {--check-expiry : Warn about expiring credentials}
-        {--check-rotation : Warn about credentials needing rotation}
+        {--check-expiry : Warn about expiring nodes}
+        {--check-rotation : Warn about nodes needing rotation}
         {--check-permissions : Warn about file permissions}';
 
     /**
@@ -52,8 +53,8 @@ final class LintCommand extends Command
      * Execute the console command.
      *
      * Validates the HCL configuration file and performs optional checks for
-     * credential expiration, rotation, and file permissions. Returns FAILURE
-     * if syntax errors or expired credentials are found, SUCCESS otherwise.
+     * node expiration, rotation, and file permissions. Returns FAILURE
+     * if syntax errors or expired nodes are found, SUCCESS otherwise.
      *
      * @param HuckleManager $huckle The Huckle manager instance
      *
@@ -94,9 +95,13 @@ final class LintCommand extends Command
 
         // Load config for additional checks
         $config = $huckle->load($path);
-        $credentials = $config->credentials();
+        // Filter to only count leaf nodes (not partition/environment containers)
+        $nodes = $config->nodes()->filter(
+            fn (Node $n): bool => !\in_array($n->type, ['partition', 'environment'], true),
+        );
+        $partitions = $config->partitions();
 
-        $this->info(sprintf('✓ Loaded %d credentials in %d groups', $credentials->count(), $config->groups()->count()));
+        $this->info(sprintf('✓ Loaded %d nodes in %d partitions', $nodes->count(), $partitions->count()));
 
         // Check expiry
         if ($this->option('check-expiry')) {
@@ -106,23 +111,23 @@ final class LintCommand extends Command
             $expired = $config->expired();
 
             if ($expired->isNotEmpty()) {
-                $errors[] = sprintf('Found %d expired credential(s)', $expired->count());
+                $errors[] = sprintf('Found %d expired node(s)', $expired->count());
 
-                foreach ($expired as $cred) {
-                    $this->error(sprintf('  ✗ EXPIRED: %s (expired: %s)', $cred->path(), $cred->expires));
+                foreach ($expired as $node) {
+                    $this->error(sprintf('  ✗ EXPIRED: %s (expired: %s)', $node->pathString(), $node->expires));
                 }
             }
 
             if ($expiring->isNotEmpty()) {
-                $warnings[] = sprintf('Found %d credential(s) expiring within %d days', $expiring->count(), $expiryDays);
+                $warnings[] = sprintf('Found %d node(s) expiring within %d days', $expiring->count(), $expiryDays);
 
-                foreach ($expiring as $cred) {
-                    $this->warn(sprintf('  ! Expiring: %s (expires: %s)', $cred->path(), $cred->expires));
+                foreach ($expiring as $node) {
+                    $this->warn(sprintf('  ! Expiring: %s (expires: %s)', $node->pathString(), $node->expires));
                 }
             }
 
             if ($expired->isEmpty() && $expiring->isEmpty()) {
-                $this->info('✓ No credentials expiring soon');
+                $this->info('✓ No nodes expiring soon');
             }
         }
 
@@ -133,14 +138,14 @@ final class LintCommand extends Command
             $needsRotation = $config->needsRotation($rotationDays);
 
             if ($needsRotation->isNotEmpty()) {
-                $warnings[] = sprintf('Found %d credential(s) needing rotation', $needsRotation->count());
+                $warnings[] = sprintf('Found %d node(s) needing rotation', $needsRotation->count());
 
-                foreach ($needsRotation as $cred) {
-                    $rotated = $cred->rotated ?? 'never';
-                    $this->warn(sprintf('  ! Needs rotation: %s (last: %s)', $cred->path(), $rotated));
+                foreach ($needsRotation as $node) {
+                    $rotated = $node->rotated ?? 'never';
+                    $this->warn(sprintf('  ! Needs rotation: %s (last: %s)', $node->pathString(), $rotated));
                 }
             } else {
-                $this->info('✓ All credentials recently rotated');
+                $this->info('✓ All nodes recently rotated');
             }
         }
 

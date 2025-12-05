@@ -123,7 +123,7 @@ describe('SyncCommand', function (): void {
             // Act
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--group' => 'database',
+                '--partition' => 'database',
             ])->assertSuccessful();
 
             // Assert
@@ -213,10 +213,10 @@ describe('SyncCommand', function (): void {
             // Act & Assert - Filter by non-existent group
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--group' => 'nonexistent-group',
+                '--partition' => 'nonexistent-group',
             ])
                 ->assertFailed()
-                ->expectsOutputToContain('No credentials found to sync.')
+                ->expectsOutputToContain('No nodes found to sync.')
                 ->run();
         });
 
@@ -230,7 +230,7 @@ describe('SyncCommand', function (): void {
                 '--env' => 'nonexistent-env',
             ])
                 ->assertFailed()
-                ->expectsOutputToContain('No credentials found to sync.')
+                ->expectsOutputToContain('No nodes found to sync.')
                 ->run();
         });
 
@@ -241,7 +241,7 @@ describe('SyncCommand', function (): void {
             // Act - Try to sync with filters that result in no matches
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--group' => 'nonexistent',
+                '--partition' => 'nonexistent',
             ])->assertFailed();
 
             // Assert
@@ -347,7 +347,7 @@ ENV;
             // Act
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--env' => 'production',
             ])->assertSuccessful();
 

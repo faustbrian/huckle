@@ -10,7 +10,6 @@
 namespace Cline\Huckle\Parser;
 
 use Cline\Huckle\Support\SensitiveValue;
-use Deprecated;
 use Illuminate\Support\Collection;
 
 use function array_key_exists;
@@ -26,44 +25,32 @@ use function is_string;
 /**
  * Represents a fully parsed and resolved Huckle configuration.
  *
- * Serves as the primary data structure for accessing parsed HCL configuration,
- * providing organized access to credentials, groups, divisions, and defaults.
- * Transforms the raw AST from the parser into structured, queryable objects
- * with support for filtering, lifecycle tracking, and environment exports.
+ * All configuration blocks (partitions, tenants, environments, providers, etc.)
+ * are unified into Node objects. Nodes form a flat, queryable collection that
+ * can be filtered by context (partition, environment, provider, etc.).
  *
  * @author Brian Faust <brian@cline.sh>
  */
 final class HuckleConfig
 {
     /**
-     * Indexed collection of credential groups by path.
+     * Flat collection of all nodes indexed by path.
      *
-     * @var array<string, Group>
+     * @var array<string, Node>
      */
-    private array $groups = [];
+    private array $nodes = [];
 
     /**
-     * Indexed collection of individual credentials by full path.
+     * Partition-level nodes for context-based export resolution.
      *
-     * @var array<string, Credential>
-     */
-    private array $credentials = [];
-
-    /**
-     * Indexed collection of partition configurations by name.
-     * Partitions are top-level organizational blocks (tenant, namespace, division, entity, partition).
-     *
-     * @var array<string, Division>
+     * @var array<string, Node>
      */
     private array $partitions = [];
 
     /**
-     * Indexed collection of fallback configurations by name.
+     * Fallback nodes for default exports.
      *
-     * Fallbacks provide default exports that are merged with division exports,
-     * where division exports take precedence over fallback values.
-     *
-     * @var array<string, Division>
+     * @var array<string, Node>
      */
     private array $fallbacks = [];
 
@@ -77,11 +64,7 @@ final class HuckleConfig
     /**
      * Create a new config instance from a parsed AST.
      *
-     * Processes the abstract syntax tree from the HCL parser, building structured
-     * credential, group, and division objects with resolved references and interpolations.
-     *
-     * @param array<string, mixed> $ast Parsed abstract syntax tree containing groups,
-     *                                  credentials, divisions, and defaults
+     * @param array<string, mixed> $ast Parsed abstract syntax tree
      */
     public function __construct(array $ast)
     {
@@ -102,184 +85,41 @@ final class HuckleConfig
     }
 
     /**
-     * Get all groups.
+     * Get all nodes.
      *
-     * @return Collection<string, Group> The groups collection
+     * @return Collection<string, Node> The nodes collection
      */
-    public function groups(): Collection
+    public function nodes(): Collection
     {
-        return collect($this->groups);
+        return collect($this->nodes);
     }
 
     /**
-     * Get all credentials.
+     * Get a node by path.
      *
-     * @return Collection<string, Credential> The credentials collection
+     * @param  string    $path The node path (e.g., "FI.production.posti")
+     * @return null|Node The node or null
      */
-    public function credentials(): Collection
+    public function get(string $path): ?Node
     {
-        return collect($this->credentials);
+        return $this->nodes[$path] ?? null;
     }
 
     /**
-     * Get a credential by path.
+     * Check if a node exists.
      *
-     * @param  string          $path The credential path (e.g., "database.production.main")
-     * @return null|Credential The credential or null
-     */
-    public function get(string $path): ?Credential
-    {
-        return $this->credentials[$path] ?? null;
-    }
-
-    /**
-     * Check if a credential exists.
-     *
-     * @param  string $path The credential path
-     * @return bool   True if the credential exists
+     * @param  string $path The node path
+     * @return bool   True if the node exists
      */
     public function has(string $path): bool
     {
-        return array_key_exists($path, $this->credentials);
+        return array_key_exists($path, $this->nodes);
     }
 
     /**
-     * Get a group by path.
+     * Get all partition nodes.
      *
-     * @param  string     $path The group path (e.g., "database.production")
-     * @return null|Group The group or null
-     */
-    public function group(string $path): ?Group
-    {
-        return $this->groups[$path] ?? null;
-    }
-
-    /**
-     * Get exported environment variables for a credential.
-     *
-     * @param  string                $path The credential path
-     * @return array<string, string> The exports
-     */
-    public function exports(string $path): array
-    {
-        $credential = $this->get($path);
-
-        return $credential?->export() ?? [];
-    }
-
-    /**
-     * Get all exported environment variables.
-     *
-     * @return array<string, string> Combined exports from all credentials
-     */
-    public function allExports(): array
-    {
-        $exports = [];
-
-        foreach ($this->credentials as $credential) {
-            $exports = [...$exports, ...$credential->export()];
-        }
-
-        return $exports;
-    }
-
-    /**
-     * Get credentials by tag.
-     *
-     * @param  string                         ...$tags Tags to filter by
-     * @return Collection<string, Credential> Filtered credentials
-     */
-    public function tagged(string ...$tags): Collection
-    {
-        return $this->credentials()->filter(
-            fn (Credential $cred): bool => $cred->hasAllTags($tags),
-        );
-    }
-
-    /**
-     * Get credentials in a specific environment or environments.
-     *
-     * Accepts a single environment name or an array of environment names.
-     * When an array is provided, returns credentials matching any of the environments.
-     *
-     * @param  array<string>|string           $environment The environment name(s)
-     * @return Collection<string, Credential> Filtered credentials
-     */
-    public function inEnvironment(string|array $environment): Collection
-    {
-        $environments = is_array($environment) ? $environment : [$environment];
-
-        return $this->credentials()->filter(
-            fn (Credential $cred): bool => in_array($cred->environment, $environments, true),
-        );
-    }
-
-    /**
-     * Get credentials in a specific group.
-     *
-     * @param  string                         $group       The group name
-     * @param  null|string                    $environment Optional environment filter
-     * @return Collection<string, Credential> Filtered credentials
-     */
-    public function inGroup(string $group, ?string $environment = null): Collection
-    {
-        return $this->credentials()->filter(
-            function (Credential $cred) use ($group, $environment): bool {
-                if ($cred->group !== $group) {
-                    return false;
-                }
-
-                if ($environment !== null && $cred->environment !== $environment) {
-                    return false;
-                }
-
-                return true;
-            },
-        );
-    }
-
-    /**
-     * Get credentials that are expiring soon.
-     *
-     * @param  int                            $days Number of days to consider "soon"
-     * @return Collection<string, Credential> Expiring credentials
-     */
-    public function expiring(int $days = 30): Collection
-    {
-        return $this->credentials()->filter(
-            fn (Credential $cred): bool => $cred->isExpiring($days),
-        );
-    }
-
-    /**
-     * Get credentials that are expired.
-     *
-     * @return Collection<string, Credential> Expired credentials
-     */
-    public function expired(): Collection
-    {
-        return $this->credentials()->filter(
-            fn (Credential $cred): bool => $cred->isExpired(),
-        );
-    }
-
-    /**
-     * Get credentials that need rotation.
-     *
-     * @param  int                            $days Maximum days since last rotation
-     * @return Collection<string, Credential> Credentials needing rotation
-     */
-    public function needsRotation(int $days = 90): Collection
-    {
-        return $this->credentials()->filter(
-            fn (Credential $cred): bool => $cred->needsRotation($days),
-        );
-    }
-
-    /**
-     * Get all partitions.
-     *
-     * @return Collection<string, Division> The partitions collection
+     * @return Collection<string, Node> The partitions collection
      */
     public function partitions(): Collection
     {
@@ -289,41 +129,18 @@ final class HuckleConfig
     /**
      * Get a partition by name.
      *
-     * @param  string        $name The partition name
-     * @return null|Division The partition or null
+     * @param  string    $name The partition name
+     * @return null|Node The partition or null
      */
-    public function partition(string $name): ?Division
+    public function partition(string $name): ?Node
     {
         return $this->partitions[$name] ?? null;
     }
 
     /**
-     * Get all partitions (alias for partitions()).
+     * Get all fallback nodes.
      *
-     * @return Collection<string, Division> The partitions collection
-     */
-    #[Deprecated(message: 'Use partitions() instead')]
-    public function divisions(): Collection
-    {
-        return $this->partitions();
-    }
-
-    /**
-     * Get a partition by name (alias for partition()).
-     *
-     * @param  string        $name The partition name
-     * @return null|Division The partition or null
-     */
-    #[Deprecated(message: 'Use partition() instead')]
-    public function division(string $name): ?Division
-    {
-        return $this->partition($name);
-    }
-
-    /**
-     * Get all fallbacks.
-     *
-     * @return Collection<string, Division> The fallbacks collection
+     * @return Collection<string, Node> The fallbacks collection
      */
     public function fallbacks(): Collection
     {
@@ -333,110 +150,292 @@ final class HuckleConfig
     /**
      * Get a fallback by name.
      *
-     * @param  string        $name The fallback name
-     * @return null|Division The fallback or null
+     * @param  string    $name The fallback name
+     * @return null|Node The fallback or null
      */
-    public function fallback(string $name): ?Division
+    public function fallback(string $name): ?Node
     {
         return $this->fallbacks[$name] ?? null;
     }
 
     /**
-     * Get partitions that match the given context.
+     * Get nodes matching the given context.
      *
-     * @param  array<string, string>        $context The context variables
-     * @return Collection<string, Division> Matching partitions
+     * @param  array<string, string>    $context The context to match (partition, environment, provider, etc.)
+     * @return Collection<string, Node> Matching nodes
      */
-    public function matchingPartitions(array $context): Collection
+    public function matching(array $context): Collection
     {
-        return $this->partitions()->filter(
-            fn (Division $partition): bool => $partition->matches($context),
+        return $this->nodes()->filter(
+            fn (Node $node): bool => $node->matches($context),
         );
     }
 
     /**
-     * Get partitions that match the given context (alias for matchingPartitions()).
+     * Get nodes by tag.
      *
-     * @param  array<string, string>        $context The context variables
-     * @return Collection<string, Division> Matching partitions
+     * @param  string                   ...$tags Tags to filter by
+     * @return Collection<string, Node> Filtered nodes
      */
-    #[Deprecated(message: 'Use matchingPartitions() instead')]
-    public function matchingDivisions(array $context): Collection
+    public function tagged(string ...$tags): Collection
     {
-        return $this->matchingPartitions($context);
+        return $this->nodes()->filter(
+            fn (Node $node): bool => $node->hasAllTags($tags),
+        );
     }
 
     /**
-     * Get all exports from partitions and fallbacks matching the given context.
+     * Get nodes that are expiring soon.
      *
-     * Traverses fallbacks first to establish baseline exports, then partitions to
-     * override with more specific values. This allows fallbacks to provide defaults
-     * that partitions can selectively override. Deeper hierarchical levels override
-     * parent exports with the same key, enabling context-specific configuration refinement.
+     * @param  int                      $days Number of days to consider "soon"
+     * @return Collection<string, Node> Expiring nodes
+     */
+    public function expiring(int $days = 30): Collection
+    {
+        return $this->nodes()->filter(
+            fn (Node $node): bool => $node->isExpiring($days),
+        );
+    }
+
+    /**
+     * Get nodes that are expired.
      *
-     * @param array<string, string> $context Context filter map (e.g., ['partition' => 'FI', 'environment' => 'production'])
+     * @return Collection<string, Node> Expired nodes
+     */
+    public function expired(): Collection
+    {
+        return $this->nodes()->filter(
+            fn (Node $node): bool => $node->isExpired(),
+        );
+    }
+
+    /**
+     * Get nodes that need rotation.
      *
-     * @return array<string, string> Merged environment variable exports from fallbacks and matching partitions
+     * @param  int                      $days Maximum days since last rotation
+     * @return Collection<string, Node> Nodes needing rotation
+     */
+    public function needsRotation(int $days = 90): Collection
+    {
+        return $this->nodes()->filter(
+            fn (Node $node): bool => $node->needsRotation($days),
+        );
+    }
+
+    /**
+     * Get exported environment variables for a node.
+     *
+     * @param  string                $path The node path
+     * @return array<string, string> The exports
+     */
+    public function exports(string $path): array
+    {
+        $node = $this->get($path);
+
+        return $node?->export() ?? [];
+    }
+
+    /**
+     * Get all exports from nodes matching the given context.
+     *
+     * Traverses fallbacks first to establish baseline exports, then partitions
+     * to override with more specific values. Deeper hierarchical levels override
+     * parent exports with the same key.
+     *
+     * @param array<string, string> $context Context filter map
+     *
+     * @return array<string, string> Merged environment variable exports
      */
     public function exportsForContext(array $context): array
     {
         $exports = [];
 
-        // Process fallbacks first to establish baseline exports
-        // Fallbacks are processed without partition context check - they apply globally
+        // Process fallbacks first (without partition filter)
         $fallbackContext = $context;
-        unset($fallbackContext['partition'], $fallbackContext['division']); // Remove partition filter for fallback matching
+        unset($fallbackContext['partition'], $fallbackContext['tenant']);
 
         foreach ($this->fallbacks as $fallback) {
-            $exports = [...$exports, ...$fallback->exportsForContext($fallbackContext)];
+            $exports = [...$exports, ...$this->collectExportsFromNode($fallback, $fallbackContext)];
         }
 
-        // Then overlay partition-specific exports (these take precedence)
+        // Then overlay partition-specific exports
         foreach ($this->partitions as $partition) {
-            $exports = [...$exports, ...$partition->exportsForContext($context)];
+            $exports = [...$exports, ...$this->collectExportsFromNode($partition, $context)];
         }
 
         return $exports;
     }
 
     /**
-     * Build the config from the parsed AST.
+     * Get all exported environment variables from all nodes.
      *
-     * Iterates through the AST structure, processing group and partition blocks
-     * to construct the internal credential, group, and partition collections.
+     * @return array<string, string> Combined exports from all nodes
+     */
+    public function allExports(): array
+    {
+        $exports = [];
+
+        foreach ($this->nodes as $node) {
+            $exports = [...$exports, ...$node->export()];
+        }
+
+        return $exports;
+    }
+
+    /**
+     * Collect exports from a node and its children matching context.
+     *
+     * @param  Node                  $node    The node to collect from
+     * @param  array<string, string> $context The context filter
+     * @return array<string, string> The collected exports
+     */
+    private function collectExportsFromNode(Node $node, array $context): array
+    {
+        $exports = [];
+
+        // Check if node matches context at its level
+        if (!$this->nodeMatchesContext($node, $context)) {
+            return [];
+        }
+
+        // Add this node's exports
+        $exports = [...$exports, ...$node->export()];
+
+        // Recurse into children
+        foreach ($node->children as $child) {
+            $exports = [...$exports, ...$this->collectExportsFromNode($child, $context)];
+        }
+
+        return $exports;
+    }
+
+    /**
+     * Check if a node matches the given context.
+     *
+     * @param  Node                  $node    The node
+     * @param  array<string, string> $context The context
+     * @return bool                  True if matches
+     */
+    private function nodeMatchesContext(Node $node, array $context): bool
+    {
+        // Map node types to context keys
+        $typeToContext = [
+            'partition' => ['partition', 'tenant', 'namespace', 'division', 'entity'],
+            'environment' => ['environment'],
+            'provider' => ['provider'],
+            'country' => ['country'],
+            'service' => ['service'],
+        ];
+
+        foreach ($context as $key => $value) {
+            // Find the matching type for this context key
+            foreach ($typeToContext as $nodeType => $contextKeys) {
+                if (in_array($key, $contextKeys, true)) {
+                    // If node is this type, it must match the value
+                    if ($node->type === $nodeType && $node->name !== $value) {
+                        return false;
+                    }
+
+                    // Check path for ancestor matching
+                    $position = match ($nodeType) {
+                        'partition' => 0,
+                        'environment' => 1,
+                        'provider' => 2,
+                        'country' => 3,
+                        'service' => 4,
+                        default => null,
+                    };
+
+                    if ($position !== null && isset($node->path[$position]) && $node->path[$position] !== $value) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Build the config from the parsed AST.
      *
      * @param array<string, mixed> $ast Abstract syntax tree from parser
      */
     private function buildFromAst(array $ast): void
     {
-        /** @var array<int, array<string, mixed>> $groups */
-        $groups = $ast['groups'] ?? [];
-
-        foreach ($groups as $groupData) {
-            $this->processGroup($groupData);
-        }
-
+        // Process partition-style blocks (partition/tenant/namespace/division/entity)
         /** @var array<int, array<string, mixed>> $partitions */
         $partitions = $ast['partitions'] ?? [];
 
         foreach ($partitions as $partitionData) {
-            $this->processPartition($partitionData);
+            $node = $this->processPartition($partitionData);
+            $this->partitions[$node->name] = $node;
+            $this->registerNodeAndChildren($node);
         }
 
+        // Process fallback blocks
         /** @var array<int, array<string, mixed>> $fallbacks */
         $fallbacks = $ast['fallbacks'] ?? [];
 
         foreach ($fallbacks as $fallbackData) {
-            $this->processFallback($fallbackData);
+            $node = $this->processFallback($fallbackData);
+            $this->fallbacks[$node->name] = $node;
+            $this->registerNodeAndChildren($node);
+        }
+
+        // Process group blocks (legacy format: group "name" "env" { credential "name" { ... } })
+        // Groups with the same name but different environments need to be merged
+        /** @var array<int, array<string, mixed>> $groups */
+        $groups = $ast['groups'] ?? [];
+
+        /** @var array<string, array<string, Node>> $groupedByName */
+        $groupedByName = [];
+
+        foreach ($groups as $groupData) {
+            $result = $this->processGroupToEnvNode($groupData);
+            $groupName = $result['groupName'];
+            $envName = $result['envName'];
+            $envNode = $result['envNode'];
+
+            if (!isset($groupedByName[$groupName])) {
+                $groupedByName[$groupName] = [];
+            }
+
+            $groupedByName[$groupName][$envName] = $envNode;
+        }
+
+        // Create partition nodes from grouped environments
+        foreach ($groupedByName as $groupName => $environments) {
+            $partitionNode = new Node(
+                type: 'partition',
+                name: $groupName,
+                path: [$groupName],
+                fields: [],
+                exports: [],
+                connections: [],
+                tags: [],
+                expires: null,
+                rotated: null,
+                owner: null,
+                notes: null,
+                children: $environments,
+            );
+
+            $this->partitions[$groupName] = $partitionNode;
+            $this->registerNodeAndChildren($partitionNode);
         }
     }
 
     /**
-     * Process a group from the AST.
+     * Process a group block from the AST into an environment node.
      *
-     * @param array<string, mixed> $groupData The group data
+     * Group blocks use the format: group "name" "environment" { credential "name" { ... } }
+     * This maps to the unified model as: partition > environment > service
+     *
+     * @param  array<string, mixed>                             $groupData The group data
+     * @return array{groupName: string, envName: string, envNode: Node} The processed data
      */
-    private function processGroup(array $groupData): void
+    private function processGroupToEnvNode(array $groupData): array
     {
         /** @var array<int, string> $labels */
         $labels = $groupData['labels'] ?? [];
@@ -444,96 +443,82 @@ final class HuckleConfig
         /** @var string $groupName */
         $groupName = $labels[0] ?? 'default';
 
-        /** @var string $environment */
-        $environment = $labels[1] ?? 'default';
+        /** @var string $envName */
+        $envName = $labels[1] ?? 'default';
 
         /** @var array<string, mixed> $body */
         $body = $groupData['body'] ?? [];
 
-        // Extract group-level tags
+        // Extract group-level metadata
         $tags = $this->extractTags($body['tags'] ?? null);
 
-        $group = new Group($groupName, $environment, $tags);
-        $groupPath = $group->path();
+        // Process credentials as service children
+        $credentialChildren = [];
 
-        $this->groups[$groupPath] = $group;
-
-        // Process credentials within the group
         /** @var array<int, array<string, mixed>> $credentialBlocks */
         $credentialBlocks = $body['credential'] ?? [];
 
-        foreach ($credentialBlocks as $credentialData) {
-            $credential = $this->processCredential($credentialData, $group);
-            $group->addCredential($credential);
-            $this->credentials[$credential->path()] = $credential;
+        foreach ($credentialBlocks as $credentialBlock) {
+            /** @var array<int, string> $credLabels */
+            $credLabels = $credentialBlock['labels'] ?? [];
+
+            /** @var string $credName */
+            $credName = $credLabels[0] ?? 'default';
+
+            /** @var array<string, mixed> $credBody */
+            $credBody = $credentialBlock['body'] ?? [];
+
+            $credPath = [$groupName, $envName, $credName];
+
+            // Credentials inherit group-level tags
+            $credentialNode = $this->processBlockWithTags('service', $credName, $credPath, $credBody, $tags);
+            $credentialChildren[$credName] = $credentialNode;
         }
+
+        // Create environment node with credentials as children
+        $envNode = new Node(
+            type: 'environment',
+            name: $envName,
+            path: [$groupName, $envName],
+            fields: [],
+            exports: [],
+            connections: [],
+            tags: $tags,
+            expires: null,
+            rotated: null,
+            owner: null,
+            notes: null,
+            children: $credentialChildren,
+        );
+
+        return [
+            'groupName' => $groupName,
+            'envName' => $envName,
+            'envNode' => $envNode,
+        ];
     }
 
     /**
-     * Process a credential from the AST.
+     * Register a node and all its children in the flat nodes collection.
      *
-     * @param  array<string, mixed> $credentialData The credential data
-     * @param  Group                $group          The parent group
-     * @return Credential           The built credential
+     * @param Node $node The node to register
      */
-    private function processCredential(array $credentialData, Group $group): Credential
+    private function registerNodeAndChildren(Node $node): void
     {
-        /** @var array<int, string> $labels */
-        $labels = $credentialData['labels'] ?? [];
+        $this->nodes[$node->pathString()] = $node;
 
-        /** @var string $name */
-        $name = $labels[0] ?? 'unnamed';
-
-        /** @var array<string, mixed> $body */
-        $body = $credentialData['body'] ?? [];
-
-        // Extract special fields
-        $tags = [...$group->tags, ...$this->extractTags($body['tags'] ?? null)];
-
-        /** @var array<int, array<string, mixed>> $exportBlocks */
-        $exportBlocks = $body['export'] ?? [];
-        $exports = $this->extractExports($exportBlocks);
-
-        /** @var array<int, array<string, mixed>> $connectBlocks */
-        $connectBlocks = $body['connect'] ?? [];
-        $connections = $this->extractConnections($connectBlocks);
-
-        // Remove processed fields from body
-        /** @var array<string, mixed> $fields */
-        $fields = $body;
-        unset($fields['tags'], $fields['export'], $fields['connect'], $fields['expires'], $fields['rotated'], $fields['owner'], $fields['notes']);
-
-        // Process remaining fields (resolve values)
-        /** @var array<string, mixed> $processedFields */
-        $processedFields = [];
-
-        foreach ($fields as $key => $value) {
-            $processedFields[$key] = $this->resolveAstValue($value);
+        foreach ($node->children as $child) {
+            $this->registerNodeAndChildren($child);
         }
-
-        return new Credential(
-            name: $name,
-            group: $group->name,
-            environment: $group->environment,
-            tags: $tags,
-            fields: $processedFields,
-            exports: $exports,
-            connections: $connections,
-            expires: $this->extractScalarValue($body['expires'] ?? null),
-            rotated: $this->extractScalarValue($body['rotated'] ?? null),
-            owner: $this->extractScalarValue($body['owner'] ?? null),
-            notes: $this->extractScalarValue($body['notes'] ?? null),
-        );
     }
 
     /**
      * Process a partition from the AST.
      *
-     * Handles nested hierarchy: partition > environment > provider > country > service
-     *
-     * @param array<string, mixed> $partitionData The partition data
+     * @param  array<string, mixed> $partitionData The partition data
+     * @return Node                 The partition node
      */
-    private function processPartition(array $partitionData): void
+    private function processPartition(array $partitionData): Node
     {
         /** @var array<int, string> $labels */
         $labels = $partitionData['labels'] ?? [];
@@ -544,145 +529,50 @@ final class HuckleConfig
         /** @var array<string, mixed> $body */
         $body = $partitionData['body'] ?? [];
 
-        // Extract partition-level fields and exports
-        $partitionFields = $this->extractFieldsFromBody($body);
-
-        /** @var array<int, array<string, mixed>> $exportBlocks */
-        $exportBlocks = $body['export'] ?? [];
-        $partitionExports = $this->extractExports($exportBlocks);
-
-        // Process environments
-        /** @var array<string, array<string, mixed>> $environments */
-        $environments = [];
-
-        /** @var array<int, array<string, mixed>> $envBlocks */
-        $envBlocks = $body['environment'] ?? [];
-
-        foreach ($envBlocks as $envBlock) {
-            /** @var array<int, string> $envLabels */
-            $envLabels = $envBlock['labels'] ?? [];
-
-            /** @var string $envName */
-            $envName = $envLabels[0] ?? 'default';
-
-            /** @var array<string, mixed> $envBody */
-            $envBody = $envBlock['body'] ?? [];
-
-            $envFields = $this->extractFieldsFromBody($envBody);
-
-            /** @var array<int, array<string, mixed>> $envExportBlocks */
-            $envExportBlocks = $envBody['export'] ?? [];
-            $envExports = $this->extractExports($envExportBlocks);
-
-            // Process providers within environment
-            /** @var array<string, array<string, mixed>> $providers */
-            $providers = [];
-
-            /** @var array<int, array<string, mixed>> $providerBlocks */
-            $providerBlocks = $envBody['provider'] ?? [];
-
-            foreach ($providerBlocks as $providerBlock) {
-                /** @var array<int, string> $providerLabels */
-                $providerLabels = $providerBlock['labels'] ?? [];
-
-                /** @var string $providerName */
-                $providerName = $providerLabels[0] ?? 'default';
-
-                /** @var array<string, mixed> $providerBody */
-                $providerBody = $providerBlock['body'] ?? [];
-
-                $providerFields = $this->extractFieldsFromBody($providerBody);
-
-                /** @var array<int, array<string, mixed>> $providerExportBlocks */
-                $providerExportBlocks = $providerBody['export'] ?? [];
-                $providerExports = $this->extractExports($providerExportBlocks);
-
-                // Process countries within provider
-                /** @var array<string, array<string, mixed>> $countries */
-                $countries = [];
-
-                /** @var array<int, array<string, mixed>> $countryBlocks */
-                $countryBlocks = $providerBody['country'] ?? [];
-
-                foreach ($countryBlocks as $countryBlock) {
-                    /** @var array<int, string> $countryLabels */
-                    $countryLabels = $countryBlock['labels'] ?? [];
-
-                    /** @var string $countryName */
-                    $countryName = $countryLabels[0] ?? 'default';
-
-                    /** @var array<string, mixed> $countryBody */
-                    $countryBody = $countryBlock['body'] ?? [];
-
-                    $countryFields = $this->extractFieldsFromBody($countryBody);
-
-                    /** @var array<int, array<string, mixed>> $countryExportBlocks */
-                    $countryExportBlocks = $countryBody['export'] ?? [];
-                    $countryExports = $this->extractExports($countryExportBlocks);
-
-                    // Process services within country
-                    $countryServices = $this->extractServices($countryBody);
-
-                    $countries[$countryName] = [
-                        'fields' => $countryFields,
-                        'exports' => $countryExports,
-                        'services' => $countryServices,
-                    ];
-                }
-
-                // Process services at provider level
-                $providerServices = $this->extractServices($providerBody);
-
-                $providers[$providerName] = [
-                    'fields' => $providerFields,
-                    'exports' => $providerExports,
-                    'countries' => $countries,
-                    'services' => $providerServices,
-                ];
-            }
-
-            $environments[$envName] = [
-                'fields' => $envFields,
-                'exports' => $envExports,
-                'providers' => $providers,
-            ];
-        }
-
-        $partition = new Division($name, $partitionFields, $partitionExports, $environments);
-        $this->partitions[$name] = $partition;
+        return $this->processBlock('partition', $name, [$name], $body);
     }
 
     /**
      * Process a fallback from the AST.
      *
-     * Fallback blocks have the same structure as divisions but are used to provide
-     * default exports when no specific division matches or to fill in missing keys.
-     * They use the same nested hierarchy: environment > provider > country > service.
-     *
-     * @param array<string, mixed> $fallbackData The fallback data from AST
+     * @param  array<string, mixed> $fallbackData The fallback data
+     * @return Node                 The fallback node
      */
-    private function processFallback(array $fallbackData): void
+    private function processFallback(array $fallbackData): Node
     {
         /** @var array<int, string> $labels */
         $labels = $fallbackData['labels'] ?? [];
 
-        // Fallback can optionally have a name label, defaults to 'default'
         /** @var string $name */
         $name = $labels[0] ?? 'default';
 
         /** @var array<string, mixed> $body */
         $body = $fallbackData['body'] ?? [];
 
-        // Extract fallback-level fields and exports (same as division)
-        $fallbackFields = $this->extractFieldsFromBody($body);
+        return $this->processBlock('fallback', $name, [$name], $body);
+    }
 
-        /** @var array<int, array<string, mixed>> $fallbackExportBlocks */
-        $fallbackExportBlocks = $body['export'] ?? [];
-        $fallbackExports = $this->extractExports($fallbackExportBlocks);
+    /**
+     * Process a generic block into a Node.
+     *
+     * @param  string               $type       Block type
+     * @param  string               $name       Block name
+     * @param  array<string>        $parentPath Parent path segments
+     * @param  array<string, mixed> $body       Block body
+     * @return Node                 The built node
+     */
+    private function processBlock(string $type, string $name, array $parentPath, array $body): Node
+    {
+        // Extract fields and special blocks
+        $fields = $this->extractFieldsFromBody($body);
+        $exports = $this->extractExports($body['export'] ?? []);
+        $connections = $this->extractConnections($body['connect'] ?? []);
+        $tags = $this->extractTags($body['tags'] ?? null);
 
-        // Process environments (same structure as division)
-        $environments = [];
+        // Process child blocks
+        $children = [];
 
+        // Environment blocks
         /** @var array<int, array<string, mixed>> $envBlocks */
         $envBlocks = $body['environment'] ?? [];
 
@@ -693,91 +583,125 @@ final class HuckleConfig
             /** @var array<string, mixed> $envBody */
             $envBody = $envBlock['body'] ?? [];
 
-            // Support multiple environment labels (e.g., environment "staging" "local" "sandbox")
-            $envFields = $this->extractFieldsFromBody($envBody);
-
-            /** @var array<int, array<string, mixed>> $envExportBlocks */
-            $envExportBlocks = $envBody['export'] ?? [];
-            $envExports = $this->extractExports($envExportBlocks);
-
-            // Process providers in environment
-            $providers = [];
-
-            /** @var array<int, array<string, mixed>> $providerBlocks */
-            $providerBlocks = $envBody['provider'] ?? [];
-
-            foreach ($providerBlocks as $providerBlock) {
-                /** @var array<int, string> $providerLabels */
-                $providerLabels = $providerBlock['labels'] ?? [];
-
-                /** @var string $providerName */
-                $providerName = $providerLabels[0] ?? 'default';
-
-                /** @var array<string, mixed> $providerBody */
-                $providerBody = $providerBlock['body'] ?? [];
-
-                $providerFields = $this->extractFieldsFromBody($providerBody);
-
-                /** @var array<int, array<string, mixed>> $providerExportBlocks */
-                $providerExportBlocks = $providerBody['export'] ?? [];
-                $providerExports = $this->extractExports($providerExportBlocks);
-
-                // Process countries in provider
-                $countries = [];
-
-                /** @var array<int, array<string, mixed>> $countryBlocks */
-                $countryBlocks = $providerBody['country'] ?? [];
-
-                foreach ($countryBlocks as $countryBlock) {
-                    /** @var array<int, string> $countryLabels */
-                    $countryLabels = $countryBlock['labels'] ?? [];
-
-                    /** @var string $countryName */
-                    $countryName = $countryLabels[0] ?? 'default';
-
-                    /** @var array<string, mixed> $countryBody */
-                    $countryBody = $countryBlock['body'] ?? [];
-
-                    $countryFields = $this->extractFieldsFromBody($countryBody);
-
-                    /** @var array<int, array<string, mixed>> $countryExportBlocks */
-                    $countryExportBlocks = $countryBody['export'] ?? [];
-                    $countryExports = $this->extractExports($countryExportBlocks);
-
-                    // Process services in country
-                    $countryServices = $this->extractServices($countryBody);
-
-                    $countries[$countryName] = [
-                        'fields' => $countryFields,
-                        'exports' => $countryExports,
-                        'services' => $countryServices,
-                    ];
-                }
-
-                // Process services at provider level
-                $providerServices = $this->extractServices($providerBody);
-
-                $providers[$providerName] = [
-                    'fields' => $providerFields,
-                    'exports' => $providerExports,
-                    'countries' => $countries,
-                    'services' => $providerServices,
-                ];
-            }
-
-            // Each environment label creates a separate environment entry
+            // Support multiple environment labels (e.g., environment "staging" "local")
             foreach ($envLabels as $envName) {
-                $environments[$envName] = [
-                    'fields' => $envFields,
-                    'exports' => $envExports,
-                    'providers' => $providers,
-                ];
+                $envPath = [...$parentPath, $envName];
+                $child = $this->processBlock('environment', $envName, $envPath, $envBody);
+                $children[$envName] = $child;
             }
         }
 
-        // Reuse Division class for fallbacks - same structure
-        $fallback = new Division($name, $fallbackFields, $fallbackExports, $environments);
-        $this->fallbacks[$name] = $fallback;
+        // Provider blocks
+        /** @var array<int, array<string, mixed>> $providerBlocks */
+        $providerBlocks = $body['provider'] ?? [];
+
+        foreach ($providerBlocks as $providerBlock) {
+            /** @var array<int, string> $providerLabels */
+            $providerLabels = $providerBlock['labels'] ?? [];
+
+            /** @var string $providerName */
+            $providerName = $providerLabels[0] ?? 'default';
+
+            /** @var array<string, mixed> $providerBody */
+            $providerBody = $providerBlock['body'] ?? [];
+
+            $providerPath = [...$parentPath, $providerName];
+            $child = $this->processBlock('provider', $providerName, $providerPath, $providerBody);
+            $children[$providerName] = $child;
+        }
+
+        // Country blocks
+        /** @var array<int, array<string, mixed>> $countryBlocks */
+        $countryBlocks = $body['country'] ?? [];
+
+        foreach ($countryBlocks as $countryBlock) {
+            /** @var array<int, string> $countryLabels */
+            $countryLabels = $countryBlock['labels'] ?? [];
+
+            /** @var string $countryName */
+            $countryName = $countryLabels[0] ?? 'default';
+
+            /** @var array<string, mixed> $countryBody */
+            $countryBody = $countryBlock['body'] ?? [];
+
+            $countryPath = [...$parentPath, $countryName];
+            $child = $this->processBlock('country', $countryName, $countryPath, $countryBody);
+            $children[$countryName] = $child;
+        }
+
+        // Service blocks
+        /** @var array<int, array<string, mixed>> $serviceBlocks */
+        $serviceBlocks = $body['service'] ?? [];
+
+        foreach ($serviceBlocks as $serviceBlock) {
+            /** @var array<int, string> $serviceLabels */
+            $serviceLabels = $serviceBlock['labels'] ?? [];
+
+            /** @var string $serviceName */
+            $serviceName = $serviceLabels[0] ?? 'default';
+
+            /** @var array<string, mixed> $serviceBody */
+            $serviceBody = $serviceBlock['body'] ?? [];
+
+            $servicePath = [...$parentPath, $serviceName];
+            $child = $this->processBlock('service', $serviceName, $servicePath, $serviceBody);
+            $children[$serviceName] = $child;
+        }
+
+        return new Node(
+            type: $type,
+            name: $name,
+            path: $parentPath,
+            fields: $fields,
+            exports: $exports,
+            connections: $connections,
+            tags: $tags,
+            expires: $this->extractScalarValue($body['expires'] ?? null),
+            rotated: $this->extractScalarValue($body['rotated'] ?? null),
+            owner: $this->extractScalarValue($body['owner'] ?? null),
+            notes: $this->extractScalarValue($body['notes'] ?? null),
+            children: $children,
+        );
+    }
+
+    /**
+     * Process a nested block with inherited tags from parent.
+     *
+     * Similar to processBlock but merges inherited tags from parent with any
+     * tags defined on the block itself.
+     *
+     * @param  string               $type         Block type
+     * @param  string               $name         Block name
+     * @param  array<string>        $parentPath   Parent path segments
+     * @param  array<string, mixed> $body         Block body
+     * @param  array<string>        $inheritedTags Tags inherited from parent
+     * @return Node                 The built node
+     */
+    private function processBlockWithTags(string $type, string $name, array $parentPath, array $body, array $inheritedTags): Node
+    {
+        // Extract fields and special blocks
+        $fields = $this->extractFieldsFromBody($body);
+        $exports = $this->extractExports($body['export'] ?? []);
+        $connections = $this->extractConnections($body['connect'] ?? []);
+
+        // Merge inherited tags with any tags defined on this block
+        $ownTags = $this->extractTags($body['tags'] ?? null);
+        $tags = \array_unique([...$inheritedTags, ...$ownTags]);
+
+        return new Node(
+            type: $type,
+            name: $name,
+            path: $parentPath,
+            fields: $fields,
+            exports: $exports,
+            connections: $connections,
+            tags: $tags,
+            expires: $this->extractScalarValue($body['expires'] ?? null),
+            rotated: $this->extractScalarValue($body['rotated'] ?? null),
+            owner: $this->extractScalarValue($body['owner'] ?? null),
+            notes: $this->extractScalarValue($body['notes'] ?? null),
+            children: [],
+        );
     }
 
     /**
@@ -788,7 +712,10 @@ final class HuckleConfig
      */
     private function extractFieldsFromBody(array $body): array
     {
-        $excludeKeys = ['export', 'environment', 'provider', 'country', 'service', 'carrier', 'if'];
+        $excludeKeys = [
+            'export', 'connect', 'environment', 'provider', 'country', 'service',
+            'tags', 'expires', 'rotated', 'owner', 'notes',
+        ];
         $fields = [];
 
         foreach ($body as $key => $value) {
@@ -810,42 +737,6 @@ final class HuckleConfig
         }
 
         return $fields;
-    }
-
-    /**
-     * Extract services from a block body.
-     *
-     * @param  array<string, mixed>                                                               $body The block body
-     * @return array<string, array{fields: array<string, mixed>, exports: array<string, string>}> The extracted services
-     */
-    private function extractServices(array $body): array
-    {
-        /** @var array<string, array{fields: array<string, mixed>, exports: array<string, string>}> $services */
-        $services = [];
-
-        /** @var array<int, array<string, mixed>> $serviceBlocks */
-        $serviceBlocks = $body['service'] ?? [];
-
-        foreach ($serviceBlocks as $serviceBlock) {
-            /** @var array<int, string> $serviceLabels */
-            $serviceLabels = $serviceBlock['labels'] ?? [];
-
-            /** @var string $serviceName */
-            $serviceName = $serviceLabels[0] ?? 'default';
-
-            /** @var array<string, mixed> $serviceBody */
-            $serviceBody = $serviceBlock['body'] ?? [];
-
-            /** @var array<int, array<string, mixed>> $serviceExportBlocks */
-            $serviceExportBlocks = $serviceBody['export'] ?? [];
-
-            $services[$serviceName] = [
-                'fields' => $this->extractFieldsFromBody($serviceBody),
-                'exports' => $this->extractExports($serviceExportBlocks),
-            ];
-        }
-
-        return $services;
     }
 
     /**
@@ -981,13 +872,8 @@ final class HuckleConfig
     /**
      * Resolve an AST value to a PHP value.
      *
-     * Transforms AST node representations into native PHP types, handling
-     * strings, numbers, booleans, arrays, objects, function calls (like sensitive()),
-     * and field references (${self.field}).
-     *
-     * @param mixed $value AST node value potentially containing type metadata
-     *
-     * @return mixed Resolved PHP value appropriate for the AST node type
+     * @param  mixed $value AST node value
+     * @return mixed Resolved PHP value
      */
     private function resolveAstValue(mixed $value): mixed
     {
@@ -1020,13 +906,8 @@ final class HuckleConfig
     /**
      * Resolve a function call from the AST.
      *
-     * Currently supports the sensitive() function which wraps values in
-     * SensitiveValue objects for protected handling. Unknown functions
-     * are returned unchanged for potential future extension.
-     *
-     * @param array<string, mixed> $func Function AST node containing name and arguments
-     *
-     * @return mixed Resolved function result (SensitiveValue for sensitive(), or raw AST)
+     * @param  array<string, mixed> $func Function AST node
+     * @return mixed                Resolved function result
      */
     private function resolveFunction(array $func): mixed
     {
@@ -1036,7 +917,6 @@ final class HuckleConfig
         /** @var array<int, mixed> $args */
         $args = $func['args'] ?? [];
 
-        // Handle sensitive() function to wrap values for protected display
         if ($name === 'sensitive' && count($args) > 0) {
             $value = $this->resolveAstValue($args[0]);
             $stringValue = is_scalar($value) ? (string) $value : '';
@@ -1044,27 +924,20 @@ final class HuckleConfig
             return new SensitiveValue($stringValue);
         }
 
-        // Unknown function - return as-is for potential future handling
         return $func;
     }
 
     /**
      * Resolve a reference (e.g., self.host).
      *
-     * Converts AST reference nodes into interpolation strings using ${...} syntax
-     * for later resolution by credential or division field resolvers. This enables
-     * field references like ${self.host} to work in export and connection definitions.
-     *
-     * @param array<string, mixed> $ref Reference AST node containing parts array
-     *
-     * @return string Interpolation string in ${parts} format for deferred resolution
+     * @param  array<string, mixed> $ref Reference AST node
+     * @return string               Interpolation string
      */
     private function resolveReference(array $ref): string
     {
         /** @var array<int, string> $parts */
         $parts = $ref['parts'] ?? [];
 
-        // Return as interpolation string for later resolution
         return '${'.implode('.', $parts).'}';
     }
 }

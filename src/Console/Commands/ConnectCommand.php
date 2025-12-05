@@ -10,7 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
-use Cline\Huckle\Parser\Credential;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -21,13 +21,13 @@ use function implode;
 use function sprintf;
 
 /**
- * Artisan command to execute connection commands for credentials.
+ * Artisan command to execute connection commands for nodes.
  *
- * Provides CLI interface for connecting to services using credentials
+ * Provides CLI interface for connecting to services using configuration
  * stored in Huckle. Supports listing available connections, executing
  * connection commands interactively, and copying commands to clipboard
  * for manual execution. Connection commands can be SSH, database clients,
- * or any shell command configured in the credential's connection block.
+ * or any shell command configured in the node's connection block.
  *
  * @author Brian Faust <brian@cline.sh>
  */
@@ -39,7 +39,7 @@ final class ConnectCommand extends Command
      * @var string
      */
     protected $signature = 'huckle:connect
-        {path : The credential path (e.g., database.production.main)}
+        {path : The node path (e.g., FI.production.posti)}
         {connection? : The connection name (e.g., psql, ssh)}
         {--list : List available connections instead of executing}
         {--copy : Copy command to clipboard instead of executing}';
@@ -49,12 +49,12 @@ final class ConnectCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Execute or display connection commands for credentials';
+    protected $description = 'Execute or display connection commands for nodes';
 
     /**
      * Execute the console command.
      *
-     * Retrieves the credential from the specified path and either lists
+     * Retrieves the node from the specified path and either lists
      * available connections, copies a connection command to clipboard, or
      * executes the connection command in an interactive TTY session.
      *
@@ -70,15 +70,15 @@ final class ConnectCommand extends Command
         /** @var null|string $connectionName */
         $connectionName = $this->argument('connection');
 
-        $credential = $huckle->get($path);
+        $node = $huckle->get($path);
 
-        if (!$credential instanceof Credential) {
-            $this->error('Credential not found: '.$path);
+        if (!$node instanceof Node) {
+            $this->error('Node not found: '.$path);
 
             return self::FAILURE;
         }
 
-        $connections = $credential->connectionNames();
+        $connections = $node->connectionNames();
 
         // List available connections
         if ($this->option('list') || $connectionName === null) {
@@ -91,7 +91,7 @@ final class ConnectCommand extends Command
             $this->info(sprintf('Available connections for %s:', $path));
 
             foreach ($connections as $name) {
-                $command = $credential->connection($name);
+                $command = $node->connection($name);
                 $this->line(sprintf('  %s: %s', $name, $command));
             }
 
@@ -99,7 +99,7 @@ final class ConnectCommand extends Command
         }
 
         // Get specific connection
-        $command = $credential->connection($connectionName);
+        $command = $node->connection($connectionName);
 
         if ($command === null) {
             $this->error(sprintf("Connection '%s' not found for: %s", $connectionName, $path));

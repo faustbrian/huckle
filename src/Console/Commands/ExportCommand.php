@@ -10,6 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 
 use const JSON_PRETTY_PRINT;
@@ -22,12 +23,12 @@ use function sprintf;
 use function str_replace;
 
 /**
- * Artisan command to export credentials as environment variables.
+ * Artisan command to export nodes as environment variables.
  *
- * Provides CLI interface for exporting credentials in various formats suitable
+ * Provides CLI interface for exporting nodes in various formats suitable
  * for environment variable loading. Supports dotenv (.env), JSON, and shell
- * export formats with filtering by path, group, environment, and tags. Useful
- * for integrating credentials into application deployments and CI/CD pipelines.
+ * export formats with filtering by path, partition, environment, and tags. Useful
+ * for integrating configuration into application deployments and CI/CD pipelines.
  *
  * @author Brian Faust <brian@cline.sh>
  */
@@ -39,9 +40,9 @@ final class ExportCommand extends Command
      * @var string
      */
     protected $signature = 'huckle:export
-        {path? : The credential path to export (exports all if omitted)}
+        {path? : The node path to export (exports all if omitted)}
         {--format=dotenv : Output format (dotenv, json, shell)}
-        {--group= : Filter by group name}
+        {--partition= : Filter by partition name}
         {--env= : Filter by environment}
         {--tag=* : Filter by tags}';
 
@@ -50,18 +51,18 @@ final class ExportCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Export credentials as environment variables';
+    protected $description = 'Export nodes as environment variables';
 
     /**
      * Execute the console command.
      *
-     * Retrieves credentials based on filters and exports them in the specified
-     * format. Returns FAILURE if no credentials match the criteria, SUCCESS
-     * when credentials are successfully exported to stdout.
+     * Retrieves nodes based on filters and exports them in the specified
+     * format. Returns FAILURE if no nodes match the criteria, SUCCESS
+     * when nodes are successfully exported to stdout.
      *
      * @param HuckleManager $huckle The Huckle manager instance
      *
-     * @return int FAILURE if no credentials found, SUCCESS otherwise
+     * @return int FAILURE if no nodes found, SUCCESS otherwise
      */
     public function handle(HuckleManager $huckle): int
     {
@@ -71,8 +72,8 @@ final class ExportCommand extends Command
         /** @var string $format */
         $format = $this->option('format');
 
-        /** @var null|string $group */
-        $group = $this->option('group');
+        /** @var null|string $partition */
+        $partition = $this->option('partition');
 
         /** @var null|string $env */
         $env = $this->option('env');
@@ -80,10 +81,10 @@ final class ExportCommand extends Command
         /** @var array<string> $tags */
         $tags = $this->option('tag');
 
-        $exports = $this->getExports($huckle, $path, $group, $env, $tags);
+        $exports = $this->getExports($huckle, $path, $partition, $env, $tags);
 
         if ($exports === []) {
-            $this->warn('No credentials found matching the criteria.');
+            $this->warn('No nodes found matching the criteria.');
 
             return self::FAILURE;
         }
@@ -102,23 +103,23 @@ final class ExportCommand extends Command
     /**
      * Get exports based on filters.
      *
-     * Retrieves credentials matching the specified filters and returns their
+     * Retrieves nodes matching the specified filters and returns their
      * export key-value pairs. If a specific path is provided, returns exports
-     * for that credential only. Otherwise, applies group, environment, and tag
-     * filters to select matching credentials.
+     * for that node only. Otherwise, applies partition, environment, and tag
+     * filters to select matching nodes.
      *
-     * @param HuckleManager $huckle The Huckle manager instance
-     * @param null|string   $path   Specific credential path to export
-     * @param null|string   $group  Group name filter
-     * @param null|string   $env    Environment name filter
-     * @param array<string> $tags   Tag filters (must match all)
+     * @param HuckleManager $huckle    The Huckle manager instance
+     * @param null|string   $path      Specific node path to export
+     * @param null|string   $partition Partition name filter
+     * @param null|string   $env       Environment name filter
+     * @param array<string> $tags      Tag filters (must match all)
      *
      * @return array<string, string> Key-value pairs for environment variables
      */
     private function getExports(
         HuckleManager $huckle,
         ?string $path,
-        ?string $group,
+        ?string $partition,
         ?string $env,
         array $tags,
     ): array {
@@ -127,26 +128,26 @@ final class ExportCommand extends Command
             return $huckle->exports($path);
         }
 
-        // Filter credentials
-        $credentials = $huckle->credentials();
+        // Filter nodes
+        $nodes = $huckle->nodes();
 
-        if ($group !== null) {
-            $credentials = $credentials->filter(fn ($c): bool => $c->group === $group);
+        if ($partition !== null) {
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[0]) && $n->path[0] === $partition);
         }
 
         if ($env !== null) {
-            $credentials = $credentials->filter(fn ($c): bool => $c->environment === $env);
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[1]) && $n->path[1] === $env);
         }
 
         if ($tags !== []) {
-            $credentials = $credentials->filter(fn ($c): bool => $c->hasAllTags($tags));
+            $nodes = $nodes->filter(fn (Node $n): bool => $n->hasAllTags($tags));
         }
 
         // Collect exports
         $exports = [];
 
-        foreach ($credentials as $credential) {
-            $exports = [...$exports, ...$credential->export()];
+        foreach ($nodes as $node) {
+            $exports = [...$exports, ...$node->export()];
         }
 
         return $exports;

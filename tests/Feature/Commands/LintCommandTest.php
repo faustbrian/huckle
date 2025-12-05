@@ -64,8 +64,8 @@ describe('LintCommand', function (): void {
             // Act
             $result = $this->artisan('huckle:lint');
 
-            // Assert - basic.hcl has 5 credentials in 4 groups
-            $result->expectsOutputToContain('✓ Loaded 5 credentials in 4 groups')
+            // Assert - basic.hcl has 5 nodes in 3 partitions
+            $result->expectsOutputToContain('✓ Loaded 5 nodes in 3 partitions')
                 ->assertExitCode(0);
         });
     });

@@ -19,7 +19,8 @@ describe('HuckleParser', function (): void {
             $config = $this->parser->parseFile(testFixture('basic.hcl'));
 
             expect($config)->not->toBeNull();
-            expect($config->credentials())->toHaveCount(5);
+            // basic.hcl has 3 partitions (database, aws, redis) with 5 services total
+            expect($config->partitions())->toHaveCount(3);
         });
 
         test('throws RuntimeException when file not found', function (): void {

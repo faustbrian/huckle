@@ -8,8 +8,7 @@
  */
 
 use Cline\Huckle\HuckleManager;
-use Cline\Huckle\Parser\Credential;
-use Cline\Huckle\Parser\Group;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Support\Facades\Config;
 
 describe('HuckleManager', function (): void {
@@ -22,7 +21,7 @@ describe('HuckleManager', function (): void {
             $config = $this->manager->load();
 
             expect($config)->not->toBeNull();
-            expect($config->credentials()->count())->toBeGreaterThan(0);
+            expect($config->nodes()->count())->toBeGreaterThan(0);
         });
 
         test('loads configuration from custom path', function (): void {
@@ -33,118 +32,100 @@ describe('HuckleManager', function (): void {
     });
 
     describe('get', function (): void {
-        test('gets credential by path', function (): void {
-            $credential = $this->manager->get('database.production.main');
+        test('gets node by path', function (): void {
+            $node = $this->manager->get('database.production.main');
 
-            expect($credential)->toBeInstanceOf(Credential::class);
-            expect($credential->name)->toBe('main');
+            expect($node)->toBeInstanceOf(Node::class);
+            expect($node->name)->toBe('main');
         });
 
         test('returns null for non-existent path', function (): void {
-            $credential = $this->manager->get('nonexistent.path');
+            $node = $this->manager->get('nonexistent.path');
 
-            expect($credential)->toBeNull();
+            expect($node)->toBeNull();
         });
     });
 
     describe('has', function (): void {
-        test('returns true for existing credential', function (): void {
+        test('returns true for existing node', function (): void {
             expect($this->manager->has('database.production.main'))->toBeTrue();
         });
 
-        test('returns false for non-existent credential', function (): void {
+        test('returns false for non-existent node', function (): void {
             expect($this->manager->has('nonexistent'))->toBeFalse();
         });
     });
 
-    describe('group', function (): void {
-        test('gets group by path', function (): void {
-            $group = $this->manager->group('database.production');
+    describe('nodes', function (): void {
+        test('returns all nodes', function (): void {
+            $nodes = $this->manager->nodes();
 
-            expect($group)->toBeInstanceOf(Group::class);
-            expect($group->name)->toBe('database');
-            expect($group->environment)->toBe('production');
-        });
-
-        test('returns null for non-existent group', function (): void {
-            $group = $this->manager->group('nonexistent');
-
-            expect($group)->toBeNull();
+            expect($nodes)->not->toBeEmpty();
+            $nodes->each(fn ($n) => expect($n)->toBeInstanceOf(Node::class));
         });
     });
 
-    describe('groups', function (): void {
-        test('returns all groups', function (): void {
-            $groups = $this->manager->groups();
+    describe('partitions', function (): void {
+        test('returns partition nodes', function (): void {
+            $partitions = $this->manager->partitions();
 
-            expect($groups)->not->toBeEmpty();
-            $groups->each(fn ($g) => expect($g)->toBeInstanceOf(Group::class));
-        });
-    });
-
-    describe('credentials', function (): void {
-        test('returns all credentials', function (): void {
-            $credentials = $this->manager->credentials();
-
-            expect($credentials)->not->toBeEmpty();
-            $credentials->each(fn ($c) => expect($c)->toBeInstanceOf(Credential::class));
+            expect($partitions)->not->toBeEmpty();
+            $partitions->each(fn ($n) => expect($n)->toBeInstanceOf(Node::class));
         });
     });
 
     describe('tagged', function (): void {
-        test('filters credentials by single tag', function (): void {
-            $credentials = $this->manager->tagged('prod');
+        test('filters nodes by single tag', function (): void {
+            $nodes = $this->manager->tagged('prod');
 
-            expect($credentials)->not->toBeEmpty();
-            $credentials->each(fn ($c) => expect($c->hasTag('prod'))->toBeTrue());
+            expect($nodes)->not->toBeEmpty();
+            $nodes->each(fn ($n) => expect($n->hasTag('prod'))->toBeTrue());
         });
 
-        test('filters credentials by multiple tags', function (): void {
-            $credentials = $this->manager->tagged('prod', 'postgres');
+        test('filters nodes by multiple tags', function (): void {
+            $nodes = $this->manager->tagged('prod', 'postgres');
 
-            $credentials->each(function ($c): void {
-                expect($c->hasTag('prod'))->toBeTrue();
-                expect($c->hasTag('postgres'))->toBeTrue();
+            $nodes->each(function ($n): void {
+                expect($n->hasTag('prod'))->toBeTrue();
+                expect($n->hasTag('postgres'))->toBeTrue();
             });
         });
     });
 
-    describe('inEnvironment', function (): void {
-        test('filters credentials by environment', function (): void {
-            $credentials = $this->manager->inEnvironment('production');
+    describe('matching', function (): void {
+        test('filters nodes by environment', function (): void {
+            $nodes = $this->manager->matching(['environment' => 'production']);
 
-            expect($credentials)->not->toBeEmpty();
-            $credentials->each(fn ($c) => expect($c->environment)->toBe('production'));
-        });
-    });
-
-    describe('inGroup', function (): void {
-        test('filters credentials by group', function (): void {
-            $credentials = $this->manager->inGroup('database');
-
-            expect($credentials)->not->toBeEmpty();
-            $credentials->each(fn ($c) => expect($c->group)->toBe('database'));
+            expect($nodes)->not->toBeEmpty();
+            $nodes->each(fn ($n) => expect($n->path[1] ?? null)->toBe('production'));
         });
 
-        test('filters credentials by group and environment', function (): void {
-            $credentials = $this->manager->inGroup('database', 'production');
+        test('filters nodes by partition', function (): void {
+            $nodes = $this->manager->matching(['partition' => 'database']);
 
-            $credentials->each(function ($c): void {
-                expect($c->group)->toBe('database');
-                expect($c->environment)->toBe('production');
+            expect($nodes)->not->toBeEmpty();
+            $nodes->each(fn ($n) => expect($n->path[0] ?? null)->toBe('database'));
+        });
+
+        test('filters nodes by partition and environment', function (): void {
+            $nodes = $this->manager->matching(['partition' => 'database', 'environment' => 'production']);
+
+            $nodes->each(function ($n): void {
+                expect($n->path[0] ?? null)->toBe('database');
+                expect($n->path[1] ?? null)->toBe('production');
             });
         });
     });
 
     describe('exports', function (): void {
-        test('gets exports for credential', function (): void {
+        test('gets exports for node', function (): void {
             $exports = $this->manager->exports('database.production.main');
 
             expect($exports)->toBeArray();
             expect($exports)->toHaveKey('DB_HOST');
         });
 
-        test('returns empty array for non-existent credential', function (): void {
+        test('returns empty array for non-existent node', function (): void {
             $exports = $this->manager->exports('nonexistent');
 
             expect($exports)->toBeEmpty();
@@ -152,7 +133,7 @@ describe('HuckleManager', function (): void {
     });
 
     describe('allExports', function (): void {
-        test('returns all exports from all credentials', function (): void {
+        test('returns all exports from all nodes', function (): void {
             $exports = $this->manager->allExports();
 
             expect($exports)->toHaveKey('DB_HOST');
@@ -162,7 +143,7 @@ describe('HuckleManager', function (): void {
     });
 
     describe('exportToEnv', function (): void {
-        test('exports credential values to environment', function (): void {
+        test('exports node values to environment', function (): void {
             $this->manager->exportToEnv('database.production.main');
 
             expect(getenv('DB_HOST'))->toBe('db.prod.internal');
@@ -171,11 +152,11 @@ describe('HuckleManager', function (): void {
     });
 
     describe('exportAllToEnv', function (): void {
-        test('exports all credential values to environment', function (): void {
+        test('exports all node values to environment', function (): void {
             $this->manager->exportAllToEnv();
 
-            // Verify environment variables from different credentials are set
-            // Note: When multiple credentials export to same key, last one wins
+            // Verify environment variables from different nodes are set
+            // Note: When multiple nodes export to same key, last one wins
             expect(getenv('DB_HOST'))->not->toBeEmpty();
             expect($_ENV['DB_HOST'])->not->toBeEmpty();
             expect($_SERVER['DB_HOST'])->not->toBeEmpty();
@@ -208,15 +189,15 @@ describe('HuckleManager', function (): void {
     });
 
     describe('expiring', function (): void {
-        test('returns credentials expiring soon', function (): void {
+        test('returns nodes expiring soon', function (): void {
             $this->manager->load(testFixture('expiring.hcl'));
 
             $expiring = $this->manager->expiring(30);
 
             expect($expiring)->not->toBeEmpty();
-            // Should include credential expiring in 16 days
+            // Should include node expiring in 16 days
             expect($expiring)->toHaveKey('database.production.expiring_soon');
-            // Should not include already expired credential
+            // Should not include already expired node
             expect($expiring->has('database.production.already_expired'))->toBeFalse();
         });
 
@@ -232,7 +213,7 @@ describe('HuckleManager', function (): void {
     });
 
     describe('expired', function (): void {
-        test('returns expired credentials', function (): void {
+        test('returns expired nodes', function (): void {
             $this->manager->load(testFixture('expiring.hcl'));
 
             $expired = $this->manager->expired();
@@ -244,7 +225,7 @@ describe('HuckleManager', function (): void {
     });
 
     describe('needsRotation', function (): void {
-        test('returns credentials needing rotation', function (): void {
+        test('returns nodes needing rotation', function (): void {
             $this->manager->load(testFixture('expiring.hcl'));
 
             $needsRotation = $this->manager->needsRotation(90);
@@ -280,8 +261,8 @@ describe('HuckleManager', function (): void {
             $this->manager->flush();
 
             // Should reload on next access
-            $credential = $this->manager->get('database.production.main');
-            expect($credential)->not->toBeNull();
+            $node = $this->manager->get('database.production.main');
+            expect($node)->not->toBeNull();
         });
     });
 
@@ -327,7 +308,7 @@ describe('HuckleManager', function (): void {
 
             $diff = $this->manager->diff('production', 'staging');
 
-            // Should show difference in username for 'partial' credential
+            // Should show difference in username for 'partial' node
             expect($diff['differences'])->toHaveKey('database.partial');
             expect($diff['differences']['database.partial'])->toHaveKey('username');
 
@@ -336,7 +317,7 @@ describe('HuckleManager', function (): void {
             expect($diff['differences']['database.partial'])->not->toHaveKey('port');
             expect($diff['differences']['database.partial'])->not->toHaveKey('database');
 
-            // Should include all differences for 'different' credential
+            // Should include all differences for 'different' node
             expect($diff['differences'])->toHaveKey('database.different');
             expect($diff['differences']['database.different'])->toHaveKey('host');
         });

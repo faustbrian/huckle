@@ -15,10 +15,9 @@ use Cline\Huckle\Exceptions\EncryptionFailedException;
 use Cline\Huckle\Exceptions\FileNotFoundException;
 use Cline\Huckle\Exceptions\InvalidBase64KeyException;
 use Cline\Huckle\Exceptions\ReadOnlyConfigurationException;
-use Cline\Huckle\Parser\Credential;
-use Cline\Huckle\Parser\Group;
 use Cline\Huckle\Parser\HuckleConfig;
 use Cline\Huckle\Parser\HuckleParser;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Container\Attributes\Singleton;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Encryption\Encrypter;
@@ -58,9 +57,9 @@ use function unlink;
  * Main manager for Huckle credential operations.
  *
  * Provides comprehensive credential management including HCL parsing, querying,
- * filtering, encryption/decryption, and environment variable exports. Supports
- * environment-specific configurations, credential lifecycle tracking, and
- * multiple encryption strategies.
+ * filtering, encryption/decryption, and environment variable exports. Uses a
+ * unified Node model where all configuration blocks (partitions, environments,
+ * providers, etc.) are represented consistently.
  *
  * @author Brian Faust <brian@cline.sh>
  */
@@ -97,7 +96,7 @@ final class HuckleManager
      *
      * @param null|string $path Optional absolute path override to load from a specific file
      *
-     * @return HuckleConfig Parsed and validated configuration with all credentials and groups
+     * @return HuckleConfig Parsed and validated configuration with all nodes
      */
     public function load(?string $path = null): HuckleConfig
     {
@@ -109,14 +108,13 @@ final class HuckleManager
     }
 
     /**
-     * Load HCL file and export matching division values to the environment.
+     * Load HCL file and export matching values to the environment.
      *
-     * Parses the HCL file, filters divisions by context, and exports matching
+     * Parses the HCL file, filters nodes by context, and exports matching
      * environment variables to PHP's environment ($_ENV, $_SERVER, putenv).
-     * Useful for loading environment-specific credentials at runtime.
      *
      * @param string                $path    Absolute path to the HCL configuration file
-     * @param array<string, string> $context Context filter for divisions (e.g., ['division' => 'FI', 'environment' => 'production'])
+     * @param array<string, string> $context Context filter (e.g., ['partition' => 'FI', 'environment' => 'production'])
      *
      * @return array<string, string> Key-value map of exported environment variables
      */
@@ -152,21 +150,21 @@ final class HuckleManager
     }
 
     /**
-     * Get a credential by path.
+     * Get a node by path.
      *
-     * @param  string          $path The credential path (e.g., "database.production.main")
-     * @return null|Credential The credential or null
+     * @param  string    $path The node path (e.g., "FI.production.posti")
+     * @return null|Node The node or null
      */
-    public function get(string $path): ?Credential
+    public function get(string $path): ?Node
     {
         return $this->config()->get($path);
     }
 
     /**
-     * Check if a credential exists.
+     * Check if a node exists.
      *
-     * @param  string $path The credential path
-     * @return bool   True if the credential exists
+     * @param  string $path The node path
+     * @return bool   True if the node exists
      */
     public function has(string $path): bool
     {
@@ -174,41 +172,41 @@ final class HuckleManager
     }
 
     /**
-     * Get a group by path.
+     * Get all nodes.
      *
-     * @param  string     $path The group path (e.g., "database.production")
-     * @return null|Group The group or null
+     * @return Collection<string, Node> The nodes
      */
-    public function group(string $path): ?Group
+    public function nodes(): Collection
     {
-        return $this->config()->group($path);
+        return $this->config()->nodes();
     }
 
     /**
-     * Get all groups.
+     * Get all partition nodes.
      *
-     * @return Collection<string, Group> The groups
+     * @return Collection<string, Node> The partitions
      */
-    public function groups(): Collection
+    public function partitions(): Collection
     {
-        return $this->config()->groups();
+        return $this->config()->partitions();
     }
 
     /**
-     * Get all credentials.
+     * Get nodes matching the given context.
      *
-     * @return Collection<string, Credential> The credentials
+     * @param  array<string, string>    $context Context to match (partition, environment, provider, etc.)
+     * @return Collection<string, Node> Matching nodes
      */
-    public function credentials(): Collection
+    public function matching(array $context): Collection
     {
-        return $this->config()->credentials();
+        return $this->config()->matching($context);
     }
 
     /**
-     * Get credentials filtered by tag.
+     * Get nodes filtered by tag.
      *
-     * @param  string                         ...$tags Tags to filter by
-     * @return Collection<string, Credential> Filtered credentials
+     * @param  string                   ...$tags Tags to filter by
+     * @return Collection<string, Node> Filtered nodes
      */
     public function tagged(string ...$tags): Collection
     {
@@ -216,32 +214,9 @@ final class HuckleManager
     }
 
     /**
-     * Get credentials in a specific environment.
+     * Get exported environment variables for a node.
      *
-     * @param  string                         $environment The environment name
-     * @return Collection<string, Credential> Filtered credentials
-     */
-    public function inEnvironment(string $environment): Collection
-    {
-        return $this->config()->inEnvironment($environment);
-    }
-
-    /**
-     * Get credentials in a specific group.
-     *
-     * @param  string                         $group       The group name
-     * @param  null|string                    $environment Optional environment filter
-     * @return Collection<string, Credential> Filtered credentials
-     */
-    public function inGroup(string $group, ?string $environment = null): Collection
-    {
-        return $this->config()->inGroup($group, $environment);
-    }
-
-    /**
-     * Get exported environment variables for a credential.
-     *
-     * @param  string                $path The credential path
+     * @param  string                $path The node path
      * @return array<string, string> The exports
      */
     public function exports(string $path): array
@@ -260,13 +235,20 @@ final class HuckleManager
     }
 
     /**
-     * Export a credential's values to the environment.
+     * Get exports for a given context.
      *
-     * Resolves the credential's export mappings and injects them into PHP's
-     * environment variables ($_ENV, $_SERVER, and putenv). Useful for making
-     * credentials available to the application at runtime.
+     * @param  array<string, string>  $context Context filter
+     * @return array<string, string> Exports matching context
+     */
+    public function exportsForContext(array $context): array
+    {
+        return $this->config()->exportsForContext($context);
+    }
+
+    /**
+     * Export a node's values to the environment.
      *
-     * @param string $path Credential path (e.g., "database.production.main")
+     * @param string $path Node path (e.g., "FI.production.posti")
      *
      * @return self Fluent interface for method chaining
      */
@@ -284,11 +266,26 @@ final class HuckleManager
     }
 
     /**
-     * Export all credential values to the environment.
+     * Export context-matching values to the environment.
      *
-     * Exports all credential values from all environments and groups to PHP's
-     * environment variables. Note that duplicate keys will be overwritten by
-     * the last value encountered during iteration.
+     * @param  array<string, string> $context Context filter
+     * @return self                  Fluent interface for method chaining
+     */
+    public function exportContextToEnv(array $context): self
+    {
+        $exports = $this->exportsForContext($context);
+
+        foreach ($exports as $key => $value) {
+            putenv(sprintf('%s=%s', $key, $value));
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Export all values to the environment.
      *
      * @return self Fluent interface for method chaining
      */
@@ -306,24 +303,24 @@ final class HuckleManager
     }
 
     /**
-     * Get a connection command for a credential.
+     * Get a connection command for a node.
      *
-     * @param  string      $path           The credential path
+     * @param  string      $path           The node path
      * @param  string      $connectionName The connection name
      * @return null|string The connection command or null
      */
     public function connection(string $path, string $connectionName): ?string
     {
-        $credential = $this->get($path);
+        $node = $this->get($path);
 
-        return $credential?->connection($connectionName);
+        return $node?->connection($connectionName);
     }
 
     /**
-     * Get credentials that are expiring soon.
+     * Get nodes that are expiring soon.
      *
-     * @param  null|int                       $days Days to consider "soon" (defaults to config)
-     * @return Collection<string, Credential> Expiring credentials
+     * @param  null|int                $days Days to consider "soon" (defaults to config)
+     * @return Collection<string, Node> Expiring nodes
      */
     public function expiring(?int $days = null): Collection
     {
@@ -335,9 +332,9 @@ final class HuckleManager
     }
 
     /**
-     * Get credentials that are expired.
+     * Get nodes that are expired.
      *
-     * @return Collection<string, Credential> Expired credentials
+     * @return Collection<string, Node> Expired nodes
      */
     public function expired(): Collection
     {
@@ -345,10 +342,10 @@ final class HuckleManager
     }
 
     /**
-     * Get credentials that need rotation.
+     * Get nodes that need rotation.
      *
-     * @param  null|int                       $days Max days since rotation (defaults to config)
-     * @return Collection<string, Credential> Credentials needing rotation
+     * @param  null|int                 $days Max days since rotation (defaults to config)
+     * @return Collection<string, Node> Nodes needing rotation
      */
     public function needsRotation(?int $days = null): Collection
     {
@@ -375,10 +372,6 @@ final class HuckleManager
     /**
      * Flush the cached configuration.
      *
-     * Clears the cached parsed configuration, forcing the next operation
-     * to reload and reparse the HCL file. Useful when configuration files
-     * change during runtime or in testing scenarios.
-     *
      * @return self Fluent interface for method chaining
      */
     public function flush(): self
@@ -391,15 +384,10 @@ final class HuckleManager
     /**
      * Get the path to the Huckle config file.
      *
-     * Resolves the configuration file path using environment-specific mappings
-     * from huckle.environments config, falling back to the default huckle.path
-     * configuration or base_path('config/huckle.hcl').
-     *
      * @return string Absolute path to the HCL configuration file
      */
     public function getConfigPath(): string
     {
-        // Check for environment-specific config
         $environment = $this->app->environment();
 
         /** @var array<string, string> $environments */
@@ -414,7 +402,10 @@ final class HuckleManager
     }
 
     /**
-     * Compare credentials between two environments.
+     * Compare nodes between two environments.
+     *
+     * Compares service nodes across environments by stripping the environment
+     * from paths to make comparable keys (e.g., database.production.main becomes database.main).
      *
      * @param  string               $env1 First environment
      * @param  string               $env2 Second environment
@@ -422,28 +413,27 @@ final class HuckleManager
      */
     public function diff(string $env1, string $env2): array
     {
-        $creds1 = $this->inEnvironment($env1)->keyBy(fn (Credential $c): string => sprintf('%s.%s', $c->group, $c->name));
-        $creds2 = $this->inEnvironment($env2)->keyBy(fn (Credential $c): string => sprintf('%s.%s', $c->group, $c->name));
+        // Key by path without environment for comparison (e.g., database.main instead of database.production.main)
+        $stripEnv = fn (Node $n): string => $this->stripEnvironmentFromPath($n);
 
-        $only1 = $creds1->diffKeys($creds2)->keys()->all();
-        $only2 = $creds2->diffKeys($creds1)->keys()->all();
-        $both = $creds1->intersectByKeys($creds2)->keys()->all();
+        $nodes1 = $this->matching(['environment' => $env1])->keyBy($stripEnv);
+        $nodes2 = $this->matching(['environment' => $env2])->keyBy($stripEnv);
+
+        $only1 = $nodes1->diffKeys($nodes2)->keys()->all();
+        $only2 = $nodes2->diffKeys($nodes1)->keys()->all();
+        $both = $nodes1->intersectByKeys($nodes2)->keys()->all();
 
         $differences = [];
 
         foreach ($both as $key) {
-            $c1 = $creds1->get($key);
-            $c2 = $creds2->get($key);
+            $n1 = $nodes1->get($key);
+            $n2 = $nodes2->get($key);
 
-            if ($c1 === null) {
+            if ($n1 === null || $n2 === null) {
                 continue;
             }
 
-            if ($c2 === null) {
-                continue;
-            }
-
-            $fieldDiff = $this->compareCredentials($c1, $c2);
+            $fieldDiff = $this->compareNodes($n1, $n2, $env1, $env2);
 
             if ($fieldDiff === []) {
                 continue;
@@ -460,23 +450,44 @@ final class HuckleManager
     }
 
     /**
+     * Strip environment from a node's path for cross-environment comparison.
+     *
+     * Removes the environment segment (index 1) from paths like "database.production.main"
+     * to produce "database.main" for comparison purposes.
+     *
+     * @param Node $node The node to extract path from
+     *
+     * @return string Path with environment stripped (e.g., "database.main")
+     */
+    private function stripEnvironmentFromPath(Node $node): string
+    {
+        $path = $node->path;
+
+        // Path structure: [partition, environment, ...rest]
+        // Remove index 1 (environment) for comparison
+        if (\count($path) >= 2) {
+            unset($path[1]);
+            $path = \array_values($path);
+        }
+
+        return \implode('.', $path);
+    }
+
+    /**
      * Encrypt a configuration file.
      *
-     * Uses Laravel's Encrypter (AES-256-CBC). The encrypted file will have '.encrypted' appended.
-     * Key format: 'base64:...' or raw base64 string.
-     *
-     * @param string      $filepath Path to the configuration file (or base path when using env)
+     * @param string      $filepath Path to the configuration file
      * @param null|string $key      Encryption key (generates one if null)
      * @param null|string $cipher   Cipher algorithm (default from config or AES-256-CBC)
      * @param bool        $prune    Delete the original file after encryption (default: false)
      * @param bool        $force    Overwrite existing encrypted file (default: false)
      * @param null|string $env      Environment name (e.g., 'production')
-     * @param null|string $envStyle Environment style: 'suffix' (config.production.hcl) or 'directory' (production/config.hcl)
+     * @param null|string $envStyle Environment style: 'suffix' or 'directory'
      *
-     * @throws EncryptionFailedException If encryption fails or encrypted file exists and force is false
+     * @throws EncryptionFailedException If encryption fails
      * @throws FileNotFoundException     If file doesn't exist
      *
-     * @return array{path: string, key: string} The encrypted file path and key (raw base64)
+     * @return array{path: string, key: string} The encrypted file path and key
      */
     public function encrypt(
         string $filepath,
@@ -490,7 +501,6 @@ final class HuckleManager
         /** @var string $resolvedCipher */
         $resolvedCipher = $cipher ?? $this->getEncryptionConfig('cipher', 'AES-256-CBC');
 
-        // Handle environment-specific file paths
         $sourcePath = $this->resolveEnvFilePath($filepath, $env, $envStyle);
 
         if (!file_exists($sourcePath)) {
@@ -503,9 +513,7 @@ final class HuckleManager
             throw ReadOnlyConfigurationException::forPath($sourcePath);
         }
 
-        // Generate key if not provided
         $originalKey = $key;
-
         $key = $key !== null ? $this->parseEncryptionKey($key) : Encrypter::generateKey($resolvedCipher);
 
         try {
@@ -536,17 +544,17 @@ final class HuckleManager
     /**
      * Decrypt an encrypted configuration file.
      *
-     * @param string      $encryptedPath Path to the encrypted file (or base path when using env)
-     * @param string      $key           The decryption key (base64: prefixed or raw)
+     * @param string      $encryptedPath Path to the encrypted file
+     * @param string      $key           The decryption key
      * @param bool        $force         Overwrite existing decrypted file (default: false)
-     * @param null|string $cipher        Cipher algorithm (default from config or AES-256-CBC)
+     * @param null|string $cipher        Cipher algorithm
      * @param null|string $path          Custom output directory path
      * @param null|string $filename      Custom output filename
-     * @param null|string $env           Environment name (e.g., 'production')
+     * @param null|string $env           Environment name
      * @param bool        $prune         Delete the encrypted file after decryption (default: false)
-     * @param null|string $envStyle      Environment style: 'suffix' or 'directory'
+     * @param null|string $envStyle      Environment style
      *
-     * @throws DecryptionFailedException If decryption fails or file exists and force is false
+     * @throws DecryptionFailedException If decryption fails
      * @throws FileNotFoundException     If encrypted file doesn't exist
      *
      * @return string Path to the decrypted file
@@ -565,7 +573,6 @@ final class HuckleManager
         /** @var string $resolvedCipher */
         $resolvedCipher = $cipher ?? $this->getEncryptionConfig('cipher', 'AES-256-CBC');
 
-        // Handle environment-specific file paths
         $sourcePath = $env !== null
             ? $this->resolveEnvFilePath($encryptedPath, $env, $envStyle).'.encrypted'
             : $encryptedPath;
@@ -574,7 +581,6 @@ final class HuckleManager
             throw FileNotFoundException::forPath($sourcePath);
         }
 
-        // Determine output path
         $decryptedPath = $this->resolveDecryptedPath($sourcePath, $path, $filename);
 
         if (!$force && file_exists($decryptedPath)) {
@@ -595,7 +601,6 @@ final class HuckleManager
             throw DecryptionFailedException::forPath($sourcePath, $throwable->getMessage());
         }
 
-        // Ensure output directory exists
         $outputDir = dirname($decryptedPath);
 
         if (!is_dir($outputDir)) {
@@ -614,11 +619,9 @@ final class HuckleManager
     /**
      * Encrypt all files in a directory.
      *
-     * Uses the same encryption key for all files. Optionally processes subdirectories recursively.
-     *
      * @param string      $directory Path to the directory to encrypt
      * @param null|string $key       Encryption key (generates one if null)
-     * @param null|string $cipher    Cipher algorithm (default from config or AES-256-CBC)
+     * @param null|string $cipher    Cipher algorithm
      * @param bool        $prune     Delete original files after encryption (default: false)
      * @param bool        $force     Overwrite existing encrypted files (default: false)
      * @param bool        $recursive Process subdirectories recursively (default: false)
@@ -644,7 +647,6 @@ final class HuckleManager
         /** @var string $resolvedCipher */
         $resolvedCipher = $cipher ?? $this->getEncryptionConfig('cipher', 'AES-256-CBC');
 
-        // Generate key once for all files if not provided
         $originalKey = $key;
         $key ??= base64_encode(Encrypter::generateKey($resolvedCipher));
 
@@ -670,12 +672,10 @@ final class HuckleManager
     /**
      * Decrypt all encrypted files in a directory.
      *
-     * Processes all files ending with '.encrypted' in the specified directory.
-     *
      * @param string      $directory Path to the directory containing encrypted files
-     * @param string      $key       The decryption key (base64: prefixed or raw)
+     * @param string      $key       The decryption key
      * @param bool        $force     Overwrite existing decrypted files (default: false)
-     * @param null|string $cipher    Cipher algorithm (default from config or AES-256-CBC)
+     * @param null|string $cipher    Cipher algorithm
      * @param bool        $prune     Delete encrypted files after decryption (default: false)
      * @param bool        $recursive Process subdirectories recursively (default: false)
      *
@@ -712,29 +712,31 @@ final class HuckleManager
     }
 
     /**
-     * Compare two credentials field by field.
+     * Compare two nodes field by field.
      *
-     * @param  Credential                          $c1 First credential
-     * @param  Credential                          $c2 Second credential
+     * @param  Node                                 $n1   First node
+     * @param  Node                                 $n2   Second node
+     * @param  string                               $env1 First environment name
+     * @param  string                               $env2 Second environment name
      * @return array<string, array<string, mixed>> Field differences
      */
-    private function compareCredentials(Credential $c1, Credential $c2): array
+    private function compareNodes(Node $n1, Node $n2, string $env1, string $env2): array
     {
         $diff = [];
-        $allFields = array_merge($c1->fieldNames(), $c2->fieldNames());
+        $allFields = array_merge($n1->fieldNames(), $n2->fieldNames());
         $allFields = array_unique($allFields);
 
         foreach ($allFields as $field) {
-            $v1 = $c1->get($field);
-            $v2 = $c2->get($field);
+            $v1 = $n1->get($field);
+            $v2 = $n2->get($field);
 
             if ($v1 === $v2) {
                 continue;
             }
 
             $diff[$field] = [
-                $c1->environment => $v1,
-                $c2->environment => $v2,
+                $env1 => $v1,
+                $env2 => $v2,
             ];
         }
 
@@ -755,12 +757,10 @@ final class HuckleManager
         $pattern = $glob ?? '*';
         $files = [];
 
-        // Get files matching pattern in current directory
         $matches = glob($directory.DIRECTORY_SEPARATOR.$pattern, GLOB_NOSORT);
 
         if ($matches !== false) {
             foreach ($matches as $match) {
-                // Skip already encrypted files and directories
                 if (!is_file($match)) {
                     continue;
                 }
@@ -773,7 +773,6 @@ final class HuckleManager
             }
         }
 
-        // Recursively process subdirectories if requested
         if ($recursive) {
             $subdirs = glob($directory.DIRECTORY_SEPARATOR.'*', GLOB_NOSORT);
 
@@ -803,7 +802,6 @@ final class HuckleManager
         $directory = mb_rtrim($directory, DIRECTORY_SEPARATOR);
         $files = [];
 
-        // Get all .encrypted files in current directory
         $matches = glob($directory.DIRECTORY_SEPARATOR.'*.encrypted', GLOB_NOSORT);
 
         if ($matches !== false) {
@@ -816,7 +814,6 @@ final class HuckleManager
             }
         }
 
-        // Recursively process subdirectories if requested
         if ($recursive) {
             $subdirs = glob($directory.DIRECTORY_SEPARATOR.'*', GLOB_NOSORT);
 
@@ -837,10 +834,7 @@ final class HuckleManager
     /**
      * Parse the encryption key from base64 encoding.
      *
-     * Decodes a base64-encoded encryption key to its binary representation
-     * for use with Laravel's Encrypter. Throws exception on invalid encoding.
-     *
-     * @param string $key Base64-encoded encryption key (with or without 'base64:' prefix)
+     * @param string $key Base64-encoded encryption key
      *
      * @throws InvalidBase64KeyException If the key is not valid base64
      *
@@ -858,13 +852,9 @@ final class HuckleManager
     /**
      * Resolve environment-specific file path.
      *
-     * Supports two styles:
-     * - 'suffix': config.hcl + env 'production' -> config.production.hcl
-     * - 'directory': config.hcl + env 'production' -> production/config.hcl
-     *
      * @param  string      $filepath Base file path
-     * @param  null|string $env      Environment name (e.g., 'production', 'staging')
-     * @param  null|string $envStyle Environment style: 'suffix' or 'directory' (default from config)
+     * @param  null|string $env      Environment name
+     * @param  null|string $envStyle Environment style: 'suffix' or 'directory'
      * @return string      Resolved file path
      */
     private function resolveEnvFilePath(string $filepath, ?string $env, ?string $envStyle = null): string
@@ -882,15 +872,12 @@ final class HuckleManager
             $envDirectory = $this->getEncryptionConfig('env_directory');
 
             if ($envDirectory !== null) {
-                // Use configured env_directory as base: config/app.hcl -> config/{env_directory}/production/app.hcl
                 return $directory.DIRECTORY_SEPARATOR.$envDirectory.DIRECTORY_SEPARATOR.$env.DIRECTORY_SEPARATOR.$filename;
             }
 
-            // Default: config/app.hcl -> config/production/app.hcl
             return $directory.DIRECTORY_SEPARATOR.$env.DIRECTORY_SEPARATOR.$filename;
         }
 
-        // Suffix style: config.hcl -> config.production.hcl
         $baseFilename = pathinfo($filepath, PATHINFO_FILENAME);
         $extension = pathinfo($filepath, PATHINFO_EXTENSION);
 
@@ -919,15 +906,11 @@ final class HuckleManager
      */
     private function resolveDecryptedPath(string $encryptedPath, ?string $path, ?string $filename): string
     {
-        // Determine base filename (remove .encrypted suffix)
         $baseFilename = preg_match('/\.encrypted$/', $encryptedPath)
             ? basename($encryptedPath, '.encrypted')
             : basename($encryptedPath).'.decrypted';
 
-        // Use custom filename if provided
         $outputFilename = $filename ?? $baseFilename;
-
-        // Use custom path or original directory
         $outputDir = $path ?? dirname($encryptedPath);
 
         return mb_rtrim($outputDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$outputFilename;

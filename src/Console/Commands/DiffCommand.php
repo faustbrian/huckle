@@ -22,10 +22,10 @@ use function json_encode;
 use function sprintf;
 
 /**
- * Artisan command to compare credentials between environments.
+ * Artisan command to compare nodes between environments.
  *
- * Provides CLI interface for comparing credentials across different environments
- * to identify missing credentials, extra credentials, and field-level differences.
+ * Provides CLI interface for comparing nodes across different environments
+ * to identify missing nodes, extra nodes, and field-level differences.
  * Helps ensure consistency and identify configuration drift between environments
  * like staging, production, and development.
  *
@@ -48,14 +48,14 @@ final class DiffCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Compare credentials between two environments';
+    protected $description = 'Compare nodes between two environments';
 
     /**
      * Execute the console command.
      *
-     * Compares credentials between two environments and displays the differences
-     * in either human-readable format or JSON. Shows credentials unique to each
-     * environment and field-level differences for credentials that exist in both.
+     * Compares nodes between two environments and displays the differences
+     * in either human-readable format or JSON. Shows nodes unique to each
+     * environment and field-level differences for nodes that exist in both.
      *
      * @param HuckleManager $huckle The Huckle manager instance
      *

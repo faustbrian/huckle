@@ -22,7 +22,7 @@ describe('ShowCommand', function (): void {
         test('shows credential details for valid path', function (): void {
             // Arrange & Act
             $this->artisan('huckle:show', ['path' => 'database.production.main'])
-                ->expectsOutput('Credential: database.production.main')
+                ->expectsOutput('Node: database.production.main')
                 ->assertExitCode(0);
         });
 
@@ -31,8 +31,8 @@ describe('ShowCommand', function (): void {
             $result = $this->artisan('huckle:show', ['path' => 'database.production.main']);
 
             // Assert
-            $result->expectsOutputToContain('Group:       database')
-                ->expectsOutputToContain('Environment: production')
+            $result->expectsOutputToContain('Type:        service')
+                
                 ->expectsOutputToContain('Tags:        prod, postgres, critical')
                 ->assertExitCode(0);
         });
@@ -100,17 +100,17 @@ describe('ShowCommand', function (): void {
             $result = $this->artisan('huckle:show', ['path' => 'invalid.path.credential']);
 
             // Assert
-            $result->expectsOutput('Credential not found: invalid.path.credential')
+            $result->expectsOutput('Node not found: invalid.path.credential')
                 ->assertExitCode(1);
         });
 
-        test('returns error for partial path', function (): void {
-            // Arrange & Act
+        test('shows environment node for partial path', function (): void {
+            // Arrange & Act - database.production is now a valid environment node
             $result = $this->artisan('huckle:show', ['path' => 'database.production']);
 
             // Assert
-            $result->expectsOutput('Credential not found: database.production')
-                ->assertExitCode(1);
+            $result->expectsOutputToContain('Node: database.production')
+                ->assertExitCode(0);
         });
 
         test('returns error for malformed path', function (): void {
@@ -118,7 +118,7 @@ describe('ShowCommand', function (): void {
             $result = $this->artisan('huckle:show', ['path' => 'invalid']);
 
             // Assert
-            $result->expectsOutput('Credential not found: invalid')
+            $result->expectsOutput('Node not found: invalid')
                 ->assertExitCode(1);
         });
     });

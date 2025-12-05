@@ -50,10 +50,12 @@ describe('Fallback', function (): void {
 
             $fallback = $config->fallback('default');
 
-            expect($fallback->environmentNames())->toContain('production');
-            expect($fallback->environmentNames())->toContain('staging');
-            expect($fallback->environmentNames())->toContain('local');
-            expect($fallback->environmentNames())->toContain('sandbox');
+            // In unified model, environments are children of the fallback node
+            $envNames = \array_keys($fallback->children);
+            expect($envNames)->toContain('production');
+            expect($envNames)->toContain('staging');
+            expect($envNames)->toContain('local');
+            expect($envNames)->toContain('sandbox');
         });
     });
 

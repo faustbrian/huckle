@@ -10,7 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
-use Cline\Huckle\Parser\Credential;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
 
@@ -21,12 +21,12 @@ use function json_encode;
 use function sprintf;
 
 /**
- * Artisan command to list credentials that are expiring soon or need rotation.
+ * Artisan command to list nodes that are expiring soon or need rotation.
  *
- * Provides CLI interface for monitoring credential lifecycle by identifying
- * expired credentials, credentials expiring within a specified timeframe,
- * and credentials that haven't been rotated recently. Helps maintain security
- * by proactively alerting to credentials requiring attention.
+ * Provides CLI interface for monitoring node lifecycle by identifying
+ * expired nodes, nodes expiring within a specified timeframe,
+ * and nodes that haven't been rotated recently. Helps maintain security
+ * by proactively alerting to nodes requiring attention.
  *
  * @author Brian Faust <brian@cline.sh>
  */
@@ -39,7 +39,7 @@ final class ExpiringCommand extends Command
      */
     protected $signature = 'huckle:expiring
         {--days= : Days to consider "expiring soon"}
-        {--include-rotation : Also show credentials needing rotation}
+        {--include-rotation : Also show nodes needing rotation}
         {--json : Output as JSON}';
 
     /**
@@ -47,18 +47,18 @@ final class ExpiringCommand extends Command
      *
      * @var string
      */
-    protected $description = 'List credentials that are expiring soon';
+    protected $description = 'List nodes that are expiring soon';
 
     /**
      * Execute the console command.
      *
-     * Retrieves and displays credentials based on their expiration and rotation
-     * status. Returns FAILURE if any credentials are expired, SUCCESS otherwise.
+     * Retrieves and displays nodes based on their expiration and rotation
+     * status. Returns FAILURE if any nodes are expired, SUCCESS otherwise.
      * Output can be formatted as human-readable text or JSON for automation.
      *
      * @param HuckleManager $huckle The Huckle manager instance
      *
-     * @return int FAILURE if expired credentials exist, SUCCESS otherwise
+     * @return int FAILURE if expired nodes exist, SUCCESS otherwise
      */
     public function handle(HuckleManager $huckle): int
     {
@@ -69,7 +69,7 @@ final class ExpiringCommand extends Command
         $includeRotation = $this->option('include-rotation');
         $json = $this->option('json');
 
-        // Get expired credentials
+        // Get expired nodes
         $expired = $huckle->expired();
 
         // Get expiring soon
@@ -85,20 +85,20 @@ final class ExpiringCommand extends Command
         // Output as JSON
         if ($json) {
             $data = [
-                'expired' => $expired->map(fn (Credential $c): array => [
-                    'path' => $c->path(),
-                    'expires' => $c->expires,
+                'expired' => $expired->map(fn (Node $n): array => [
+                    'path' => $n->pathString(),
+                    'expires' => $n->expires,
                 ])->values()->all(),
-                'expiring' => $expiring->map(fn (Credential $c): array => [
-                    'path' => $c->path(),
-                    'expires' => $c->expires,
+                'expiring' => $expiring->map(fn (Node $n): array => [
+                    'path' => $n->pathString(),
+                    'expires' => $n->expires,
                 ])->values()->all(),
             ];
 
             if ($includeRotation) {
-                $data['needs_rotation'] = $needsRotation->map(fn (Credential $c): array => [
-                    'path' => $c->path(),
-                    'rotated' => $c->rotated,
+                $data['needs_rotation'] = $needsRotation->map(fn (Node $n): array => [
+                    'path' => $n->pathString(),
+                    'rotated' => $n->rotated,
                 ])->values()->all();
             }
 
@@ -114,10 +114,10 @@ final class ExpiringCommand extends Command
         // Expired
         if ($expired->isNotEmpty()) {
             $hasIssues = true;
-            $this->error('EXPIRED credentials:');
+            $this->error('EXPIRED nodes:');
 
-            foreach ($expired as $credential) {
-                $this->line(sprintf('  ✗ %s (expired: %s)', $credential->path(), $credential->expires));
+            foreach ($expired as $node) {
+                $this->line(sprintf('  ✗ %s (expired: %s)', $node->pathString(), $node->expires));
             }
 
             $this->newLine();
@@ -128,8 +128,8 @@ final class ExpiringCommand extends Command
             $hasIssues = true;
             $this->warn(sprintf('Expiring within %d days:', $days));
 
-            foreach ($expiring as $credential) {
-                $this->line(sprintf('  ! %s (expires: %s)', $credential->path(), $credential->expires));
+            foreach ($expiring as $node) {
+                $this->line(sprintf('  ! %s (expires: %s)', $node->pathString(), $node->expires));
             }
 
             $this->newLine();
@@ -140,9 +140,9 @@ final class ExpiringCommand extends Command
             $hasIssues = true;
             $this->warn(sprintf('Needs rotation (>%d days):', $rotationWarning));
 
-            foreach ($needsRotation as $credential) {
-                $rotated = $credential->rotated ?? 'never';
-                $this->line(sprintf('  ! %s (last: %s)', $credential->path(), $rotated));
+            foreach ($needsRotation as $node) {
+                $rotated = $node->rotated ?? 'never';
+                $this->line(sprintf('  ! %s (last: %s)', $node->pathString(), $rotated));
             }
 
             $this->newLine();
@@ -150,7 +150,7 @@ final class ExpiringCommand extends Command
 
         // Summary
         if (!$hasIssues) {
-            $this->info('✓ No credentials expiring soon');
+            $this->info('✓ No nodes expiring soon');
         }
 
         return $hasIssues && $expired->isNotEmpty() ? self::FAILURE : self::SUCCESS;

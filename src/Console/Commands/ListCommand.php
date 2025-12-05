@@ -10,25 +10,24 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
-use Cline\Huckle\Parser\Credential;
+use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 
 use const JSON_PRETTY_PRINT;
 
 use function implode;
-use function in_array;
 use function is_array;
 use function is_string;
 use function json_encode;
 use function sprintf;
 
 /**
- * Artisan command to list all credentials.
+ * Artisan command to list all nodes.
  *
- * Provides CLI interface for listing and filtering credentials stored in Huckle.
- * Supports filtering by group, environment, and tags with output in either
+ * Provides CLI interface for listing and filtering nodes stored in Huckle.
+ * Supports filtering by partition, environment, and tags with output in either
  * human-readable table format or JSON for programmatic consumption. Useful for
- * discovering available credentials and auditing credential inventory.
+ * discovering available nodes and auditing configuration inventory.
  *
  * @author Brian Faust <brian@cline.sh>
  */
@@ -40,7 +39,7 @@ final class ListCommand extends Command
      * @var string
      */
     protected $signature = 'huckle:list
-        {--group= : Filter by group name}
+        {--partition= : Filter by partition name}
         {--environment=* : Filter by environment(s)}
         {--tag=* : Filter by tags}
         {--json : Output as JSON}';
@@ -50,14 +49,14 @@ final class ListCommand extends Command
      *
      * @var string
      */
-    protected $description = 'List all credentials';
+    protected $description = 'List all nodes';
 
     /**
      * Execute the console command.
      *
-     * Retrieves credentials from Huckle, applies filters if specified, and
+     * Retrieves nodes from Huckle, applies filters if specified, and
      * displays them in either table or JSON format. Returns SUCCESS even if
-     * no credentials match the filter criteria.
+     * no nodes match the filter criteria.
      *
      * @param HuckleManager $huckle The Huckle manager instance
      *
@@ -65,8 +64,8 @@ final class ListCommand extends Command
      */
     public function handle(HuckleManager $huckle): int
     {
-        /** @var null|string $group */
-        $group = $this->option('group');
+        /** @var null|string $partition */
+        $partition = $this->option('partition');
 
         /** @var null|array<string>|string $envInput */
         $envInput = $this->option('environment');
@@ -82,39 +81,40 @@ final class ListCommand extends Command
         $tags = $this->option('tag');
         $json = $this->option('json');
 
-        // Get credentials
-        $credentials = $huckle->credentials();
+        // Get nodes - filter to only show leaf nodes (not partition/environment containers)
+        $nodes = $huckle->nodes()->filter(
+            fn (Node $n): bool => !\in_array($n->type, ['partition', 'environment'], true),
+        );
 
         // Apply filters
-        if ($group !== null) {
-            $credentials = $credentials->filter(fn (Credential $c): bool => $c->group === $group);
+        if ($partition !== null) {
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[0]) && $n->path[0] === $partition);
         }
 
         if ($envs !== []) {
-            $credentials = $credentials->filter(fn (Credential $c): bool => in_array($c->environment, $envs, true));
+            $nodes = $nodes->filter(fn (Node $n): bool => isset($n->path[1]) && \in_array($n->path[1], $envs, true));
         }
 
         if ($tags !== []) {
-            $credentials = $credentials->filter(fn (Credential $c): bool => $c->hasAllTags($tags));
+            $nodes = $nodes->filter(fn (Node $n): bool => $n->hasAllTags($tags));
         }
 
-        if ($credentials->isEmpty()) {
-            $this->warn('No credentials found matching the criteria.');
+        if ($nodes->isEmpty()) {
+            $this->warn('No nodes found matching the criteria.');
 
             return self::SUCCESS;
         }
 
         // Output as JSON
         if ($json) {
-            $data = $credentials->map(fn (Credential $c): array => [
-                'path' => $c->path(),
-                'group' => $c->group,
-                'environment' => $c->environment,
-                'name' => $c->name,
-                'tags' => $c->tags,
-                'expires' => $c->expires,
-                'rotated' => $c->rotated,
-                'owner' => $c->owner,
+            $data = $nodes->map(fn (Node $n): array => [
+                'path' => $n->pathString(),
+                'type' => $n->type,
+                'name' => $n->name,
+                'tags' => $n->tags,
+                'expires' => $n->expires,
+                'rotated' => $n->rotated,
+                'owner' => $n->owner,
             ])->values()->all();
 
             $encoded = json_encode($data, JSON_PRETTY_PRINT);
@@ -124,20 +124,21 @@ final class ListCommand extends Command
         }
 
         // Output as table
-        $rows = $credentials->map(fn (Credential $c): array => [
-            $c->path(),
-            implode(', ', $c->tags),
-            $c->expires ?? '-',
-            $c->owner ?? '-',
+        $rows = $nodes->map(fn (Node $n): array => [
+            $n->pathString(),
+            $n->type,
+            implode(', ', $n->tags),
+            $n->expires ?? '-',
+            $n->owner ?? '-',
         ])->values()->all();
 
         $this->table(
-            ['Path', 'Tags', 'Expires', 'Owner'],
+            ['Path', 'Type', 'Tags', 'Expires', 'Owner'],
             $rows,
         );
 
         $this->newLine();
-        $this->info(sprintf('Total: %d credential(s)', $credentials->count()));
+        $this->info(sprintf('Total: %d node(s)', $nodes->count()));
 
         return self::SUCCESS;
     }

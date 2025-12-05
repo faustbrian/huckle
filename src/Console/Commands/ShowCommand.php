@@ -10,7 +10,7 @@
 namespace Cline\Huckle\Console\Commands;
 
 use Cline\Huckle\HuckleManager;
-use Cline\Huckle\Parser\Credential;
+use Cline\Huckle\Parser\Node;
 use Cline\Huckle\Support\SensitiveValue;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
@@ -25,11 +25,11 @@ use function json_encode;
 use function sprintf;
 
 /**
- * Displays detailed credential information from the Huckle credential store.
+ * Displays detailed node information from the Huckle configuration.
  *
- * Retrieves and formats credential metadata, fields, exports, and connection
+ * Retrieves and formats node metadata, fields, exports, and connection
  * strings. Supports multiple output formats (text/JSON) and optional sensitive
- * value masking. Provides expiration and rotation warnings for credential lifecycle
+ * value masking. Provides expiration and rotation warnings for lifecycle
  * management.
  *
  * @author Brian Faust <brian@cline.sh>
@@ -39,13 +39,13 @@ final class ShowCommand extends Command
     /**
      * The name and signature of the console command.
      *
-     * Accepts a credential path in dot notation (e.g., database.production.main)
+     * Accepts a node path in dot notation (e.g., FI.production.posti)
      * and supports optional flags for revealing sensitive data and JSON output.
      *
      * @var string
      */
     protected $signature = 'huckle:show
-        {path : The credential path (e.g., database.production.main)}
+        {path : The node path (e.g., FI.production.posti)}
         {--reveal : Reveal sensitive values}
         {--json : Output as JSON}';
 
@@ -54,16 +54,16 @@ final class ShowCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Show detailed credential information';
+    protected $description = 'Show detailed node information';
 
     /**
      * Execute the console command.
      *
-     * Retrieves the credential from storage, processes sensitive values based on
+     * Retrieves the node from storage, processes sensitive values based on
      * configuration and flags, then outputs formatted information. Returns failure
-     * if the credential is not found.
+     * if the node is not found.
      *
-     * @param HuckleManager $huckle The Huckle manager instance for credential retrieval
+     * @param HuckleManager $huckle The Huckle manager instance for node retrieval
      *
      * @return int Command exit code (SUCCESS or FAILURE)
      */
@@ -75,32 +75,31 @@ final class ShowCommand extends Command
         $json = $this->option('json');
         $maskSensitive = Config::get('huckle.mask_sensitive', true);
 
-        $credential = $huckle->get($path);
+        $node = $huckle->get($path);
 
-        if (!$credential instanceof Credential) {
-            $this->error('Credential not found: '.$path);
+        if (!$node instanceof Node) {
+            $this->error('Node not found: '.$path);
 
             return self::FAILURE;
         }
 
         // Build data array
         $data = [
-            'path' => $credential->path(),
-            'group' => $credential->group,
-            'environment' => $credential->environment,
-            'name' => $credential->name,
-            'tags' => $credential->tags,
-            'expires' => $credential->expires,
-            'rotated' => $credential->rotated,
-            'owner' => $credential->owner,
-            'notes' => $credential->notes,
+            'path' => $node->pathString(),
+            'type' => $node->type,
+            'name' => $node->name,
+            'tags' => $node->tags,
+            'expires' => $node->expires,
+            'rotated' => $node->rotated,
+            'owner' => $node->owner,
+            'notes' => $node->notes,
             'fields' => [],
             'exports' => [],
             'connections' => [],
         ];
 
         // Process fields
-        foreach ($credential->fields as $key => $value) {
+        foreach ($node->fields as $key => $value) {
             if ($value instanceof SensitiveValue) {
                 $data['fields'][$key] = ($reveal || !$maskSensitive)
                     ? $value->reveal()
@@ -111,13 +110,13 @@ final class ShowCommand extends Command
         }
 
         // Process exports
-        foreach ($credential->exports as $key => $value) {
+        foreach ($node->exports as $key => $value) {
             $data['exports'][$key] = $value;
         }
 
         // Process connections
-        foreach ($credential->connectionNames() as $name) {
-            $data['connections'][$name] = $credential->connection($name);
+        foreach ($node->connectionNames() as $name) {
+            $data['connections'][$name] = $node->connection($name);
         }
 
         // Output as JSON
@@ -129,20 +128,20 @@ final class ShowCommand extends Command
         }
 
         // Output as formatted text
-        $this->info('Credential: '.$credential->path());
+        $this->info('Node: '.$node->pathString());
         $this->newLine();
 
         // Metadata
-        $this->line('<comment>Group:</comment>       '.$credential->group);
-        $this->line('<comment>Environment:</comment> '.$credential->environment);
-        $this->line('<comment>Tags:</comment>        '.($credential->tags === [] ? '-' : implode(', ', $credential->tags)));
-        $this->line('<comment>Owner:</comment>       '.($credential->owner ?? '-'));
-        $this->line('<comment>Expires:</comment>     '.($credential->expires ?? '-'));
-        $this->line('<comment>Rotated:</comment>     '.($credential->rotated ?? 'never'));
+        $this->line('<comment>Type:</comment>        '.$node->type);
+        $this->line('<comment>Name:</comment>        '.$node->name);
+        $this->line('<comment>Tags:</comment>        '.($node->tags === [] ? '-' : implode(', ', $node->tags)));
+        $this->line('<comment>Owner:</comment>       '.($node->owner ?? '-'));
+        $this->line('<comment>Expires:</comment>     '.($node->expires ?? '-'));
+        $this->line('<comment>Rotated:</comment>     '.($node->rotated ?? 'never'));
 
-        if ($credential->notes) {
+        if ($node->notes) {
             $this->newLine();
-            $this->line('<comment>Notes:</comment>       '.$credential->notes);
+            $this->line('<comment>Notes:</comment>       '.$node->notes);
         }
 
         // Fields
@@ -187,14 +186,14 @@ final class ShowCommand extends Command
         // Status warnings
         $this->newLine();
 
-        if ($credential->isExpired()) {
-            $this->error('⚠ This credential has EXPIRED!');
-        } elseif ($credential->isExpiring(30)) {
-            $this->warn('⚠ This credential is expiring soon');
+        if ($node->isExpired()) {
+            $this->error('⚠ This node has EXPIRED!');
+        } elseif ($node->isExpiring(30)) {
+            $this->warn('⚠ This node is expiring soon');
         }
 
-        if ($credential->needsRotation(90)) {
-            $this->warn('⚠ This credential needs rotation');
+        if ($node->needsRotation(90)) {
+            $this->warn('⚠ This node needs rotation');
         }
 
         return self::SUCCESS;

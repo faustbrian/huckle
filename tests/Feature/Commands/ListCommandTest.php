@@ -23,13 +23,13 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.staging.main')
                 ->expectsOutputToContain('aws.production.deploy')
                 ->expectsOutputToContain('redis.production.cache')
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('displays total count of credentials', function (): void {
             $this->artisan('huckle:list')
                 ->assertSuccessful()
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('shows credentials with tags', function (): void {
@@ -50,32 +50,32 @@ describe('ListCommand', function (): void {
 
     describe('group filtering', function (): void {
         test('filters credentials by group name', function (): void {
-            $this->artisan('huckle:list', ['--group' => 'database'])
+            $this->artisan('huckle:list', ['--partition' => 'database'])
                 ->assertSuccessful()
                 ->expectsOutputToContain('database.production.main')
                 ->expectsOutputToContain('database.production.readonly')
                 ->expectsOutputToContain('database.staging.main')
                 ->doesntExpectOutput('aws.production.deploy')
                 ->doesntExpectOutput('redis.production.cache')
-                ->expectsOutput('Total: 3 credential(s)');
+                ->expectsOutput('Total: 3 node(s)');
         });
 
         test('filters credentials by aws group', function (): void {
-            $this->artisan('huckle:list', ['--group' => 'aws'])
+            $this->artisan('huckle:list', ['--partition' => 'aws'])
                 ->assertSuccessful()
                 ->expectsOutputToContain('aws.production.deploy')
                 ->doesntExpectOutput('database.production.main')
                 ->doesntExpectOutput('redis.production.cache')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
 
         test('filters credentials by redis group', function (): void {
-            $this->artisan('huckle:list', ['--group' => 'redis'])
+            $this->artisan('huckle:list', ['--partition' => 'redis'])
                 ->assertSuccessful()
                 ->expectsOutputToContain('redis.production.cache')
                 ->doesntExpectOutput('database.production.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
     });
 
@@ -88,7 +88,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('aws.production.deploy')
                 ->expectsOutputToContain('redis.production.cache')
                 ->doesntExpectOutput('database.staging.main')
-                ->expectsOutput('Total: 4 credential(s)');
+                ->expectsOutput('Total: 4 node(s)');
         });
 
         test('filters credentials by staging environment', function (): void {
@@ -97,7 +97,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.staging.main')
                 ->doesntExpectOutput('database.production.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
 
         test('filters credentials by multiple environments', function (): void {
@@ -106,7 +106,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.main')
                 ->expectsOutputToContain('database.staging.main')
                 ->expectsOutputToContain('aws.production.deploy')
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('filters credentials by multiple environments excluding non-matching', function (): void {
@@ -115,7 +115,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.staging.main')
                 ->doesntExpectOutput('database.production.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
     });
 
@@ -128,7 +128,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('aws.production.deploy')
                 ->expectsOutputToContain('redis.production.cache')
                 ->doesntExpectOutput('database.staging.main')
-                ->expectsOutput('Total: 4 credential(s)');
+                ->expectsOutput('Total: 4 node(s)');
         });
 
         test('filters credentials by postgres tag', function (): void {
@@ -139,7 +139,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.staging.main')
                 ->doesntExpectOutput('aws.production.deploy')
                 ->doesntExpectOutput('redis.production.cache')
-                ->expectsOutput('Total: 3 credential(s)');
+                ->expectsOutput('Total: 3 node(s)');
         });
 
         test('filters credentials by multiple tags requiring all tags', function (): void {
@@ -149,7 +149,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.readonly')
                 ->doesntExpectOutput('database.staging.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 2 credential(s)');
+                ->expectsOutput('Total: 2 node(s)');
         });
 
         test('filters credentials by critical tag', function (): void {
@@ -158,7 +158,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.main')
                 ->expectsOutputToContain('database.production.readonly')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 2 credential(s)');
+                ->expectsOutput('Total: 2 node(s)');
         });
 
         test('filters credentials by three tags', function (): void {
@@ -167,7 +167,7 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('redis.production.cache')
                 ->doesntExpectOutput('database.production.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
     });
 
@@ -211,34 +211,34 @@ describe('ListCommand', function (): void {
 
     describe('no matches warning', function (): void {
         test('shows warning when no credentials match group filter', function (): void {
-            $this->artisan('huckle:list', ['--group' => 'nonexistent'])
+            $this->artisan('huckle:list', ['--partition' => 'nonexistent'])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
 
         test('shows warning when no credentials match environment filter', function (): void {
             $this->artisan('huckle:list', ['--environment' => 'nonexistent'])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
 
         test('shows warning when no credentials match tag filter', function (): void {
             $this->artisan('huckle:list', ['--tag' => ['nonexistent']])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
 
         test('shows warning when no credentials match multiple filters', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--environment' => 'nonexistent',
             ])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
 
         test('does not display table when no matches found', function (): void {
-            $this->artisan('huckle:list', ['--group' => 'nonexistent'])
+            $this->artisan('huckle:list', ['--partition' => 'nonexistent'])
                 ->assertSuccessful()
                 ->doesntExpectOutput('Path');
         });
@@ -247,7 +247,7 @@ describe('ListCommand', function (): void {
     describe('combined filters', function (): void {
         test('combines group and environment filters', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--environment' => 'production',
             ])
                 ->assertSuccessful()
@@ -255,18 +255,18 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.readonly')
                 ->doesntExpectOutput('database.staging.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 2 credential(s)');
+                ->expectsOutput('Total: 2 node(s)');
         });
 
         test('combines group and tag filters', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--tag' => ['staging'],
             ])
                 ->assertSuccessful()
                 ->expectsOutputToContain('database.staging.main')
                 ->doesntExpectOutput('database.production.main')
-                ->expectsOutput('Total: 1 credential(s)');
+                ->expectsOutput('Total: 1 node(s)');
         });
 
         test('combines environment and tag filters', function (): void {
@@ -279,12 +279,12 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.readonly')
                 ->doesntExpectOutput('database.staging.main')
                 ->doesntExpectOutput('aws.production.deploy')
-                ->expectsOutput('Total: 2 credential(s)');
+                ->expectsOutput('Total: 2 node(s)');
         });
 
         test('combines all three filters', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--environment' => 'production',
                 '--tag' => ['critical'],
             ])
@@ -292,12 +292,12 @@ describe('ListCommand', function (): void {
                 ->expectsOutputToContain('database.production.main')
                 ->expectsOutputToContain('database.production.readonly')
                 ->doesntExpectOutput('database.staging.main')
-                ->expectsOutput('Total: 2 credential(s)');
+                ->expectsOutput('Total: 2 node(s)');
         });
 
         test('combines json output with filters', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'redis',
+                '--partition' => 'redis',
                 '--json' => true,
             ])
                 ->assertSuccessful()
@@ -307,7 +307,7 @@ describe('ListCommand', function (): void {
 
         test('combines multiple filters with json output', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'database',
+                '--partition' => 'database',
                 '--environment' => 'production',
                 '--json' => true,
             ])
@@ -317,11 +317,11 @@ describe('ListCommand', function (): void {
 
         test('combined filters resulting in no matches shows warning', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'aws',
+                '--partition' => 'aws',
                 '--tag' => ['postgres'],
             ])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
     });
 
@@ -329,28 +329,28 @@ describe('ListCommand', function (): void {
         test('handles empty tag array', function (): void {
             $this->artisan('huckle:list', ['--tag' => []])
                 ->assertSuccessful()
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('handles null group filter', function (): void {
-            $this->artisan('huckle:list', ['--group' => null])
+            $this->artisan('huckle:list', ['--partition' => null])
                 ->assertSuccessful()
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('handles null environment filter', function (): void {
             $this->artisan('huckle:list', ['--environment' => null])
                 ->assertSuccessful()
-                ->expectsOutput('Total: 5 credential(s)');
+                ->expectsOutput('Total: 5 node(s)');
         });
 
         test('json output with no matches returns empty array', function (): void {
             $this->artisan('huckle:list', [
-                '--group' => 'nonexistent',
+                '--partition' => 'nonexistent',
                 '--json' => true,
             ])
                 ->assertSuccessful()
-                ->expectsOutput('No credentials found matching the criteria.');
+                ->expectsOutput('No nodes found matching the criteria.');
         });
     });
 });
