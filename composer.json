@@ -1,0 +1,80 @@
+{
+    "name": "cline/huckle",
+    "description": "HCL-based multi-tenant configuration management for Laravel with credential lifecycle support",
+    "license": "MIT",
+    "keywords": [
+        "php",
+        "laravel",
+        "hcl",
+        "configuration",
+        "multi-tenant",
+        "env",
+        "credentials",
+        "secrets",
+        "config"
+    ],
+    "authors": [
+        {
+            "name": "Brian Faust",
+            "email": "brian@cline.sh"
+        }
+    ],
+    "require": {
+        "php": "^8.4.0",
+        "cline/hcl": "^1.1",
+        "illuminate/contracts": "^12.0",
+        "illuminate/support": "^12.0",
+        "spatie/laravel-package-tools": "^1.92.7",
+        "symfony/intl": "^7.4 || ^8.0"
+    },
+    "require-dev": {
+        "cline/coding-standard": "^1.5.8",
+        "orchestra/testbench": "^10.8",
+        "symfony/var-dumper": "^7.4.0"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "Cline\\Huckle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "ergebnis/composer-normalize": true,
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "aliases": {
+                "Huckle": "Cline\\Huckle\\Facades\\Huckle"
+            },
+            "providers": [
+                "Cline\\Huckle\\HuckleServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "lint": "vendor/bin/ecs check --fix",
+        "refactor": "rector",
+        "test": [
+            "@test:lint",
+            "@test:type-coverage",
+            "@test:unit",
+            "@test:types",
+            "@test:refactor"
+        ],
+        "test:lint": "vendor/bin/ecs check",
+        "test:refactor": "rector --dry-run",
+        "test:type-coverage": "pest --parallel --min=90 --type-coverage",
+        "test:types": "phpstan",
+        "test:unit": "pest --parallel --min=90 --coverage"
+    }
+}
