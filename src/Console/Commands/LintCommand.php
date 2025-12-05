@@ -14,6 +14,7 @@ use Cline\Huckle\Parser\Node;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
 
+use function array_keys;
 use function clearstatcache;
 use function count;
 use function fileperms;
@@ -40,7 +41,12 @@ final class LintCommand extends Command
     protected $signature = 'huckle:lint
         {--check-expiry : Warn about expiring nodes}
         {--check-rotation : Warn about nodes needing rotation}
-        {--check-permissions : Warn about file permissions}';
+        {--check-permissions : Warn about file permissions}
+        {--table : Show table of environment variables by partition}
+        {--partition= : Filter table output by partition/tenant name}
+        {--environment= : Filter table output by environment name}
+        {--provider= : Filter table output by provider name}
+        {--country= : Filter table output by country code}';
 
     /**
      * The console command description.
@@ -102,6 +108,11 @@ final class LintCommand extends Command
         $partitions = $config->partitions();
 
         $this->info(sprintf('✓ Loaded %d nodes in %d partitions', $nodes->count(), $partitions->count()));
+
+        // Show environment variables table
+        if ($this->option('table')) {
+            $this->showExportsTable($nodes);
+        }
 
         // Check expiry
         if ($this->option('check-expiry')) {
@@ -185,5 +196,93 @@ final class LintCommand extends Command
         $this->info('Lint passed with no issues');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Display a table of environment variables grouped by partition/environment.
+     *
+     * @param \Illuminate\Support\Collection<string, Node> $nodes The leaf nodes
+     */
+    private function showExportsTable(\Illuminate\Support\Collection $nodes): void
+    {
+        // Build context filter from options
+        $context = [];
+
+        /** @var null|string $partition */
+        $partition = $this->option('partition');
+        if ($partition !== null) {
+            $context['partition'] = $partition;
+        }
+
+        /** @var null|string $environment */
+        $environment = $this->option('environment');
+        if ($environment !== null) {
+            $context['environment'] = $environment;
+        }
+
+        /** @var null|string $provider */
+        $provider = $this->option('provider');
+        if ($provider !== null) {
+            $context['provider'] = $provider;
+        }
+
+        /** @var null|string $country */
+        $country = $this->option('country');
+        if ($country !== null) {
+            $context['country'] = $country;
+        }
+
+        // Filter nodes by context
+        $filteredNodes = $context === []
+            ? $nodes
+            : $nodes->filter(fn (Node $node): bool => $node->matches($context));
+
+        if ($filteredNodes->isEmpty()) {
+            $this->newLine();
+            $this->warn('No nodes found matching the filter criteria.');
+
+            return;
+        }
+
+        // Build rows: [Partition, Environment, Node, Variable, Value]
+        $rows = [];
+
+        foreach ($filteredNodes as $node) {
+            $partition = $node->path[0] ?? '-';
+            $environment = $node->path[1] ?? '-';
+            $nodeName = $node->name;
+            $exports = $node->export();
+
+            if ($exports === []) {
+                // Node has no exports
+                $rows[] = [$partition, $environment, $nodeName, '<comment>-</comment>', '<comment>no exports</comment>'];
+            } else {
+                $first = true;
+
+                foreach ($exports as $varName => $value) {
+                    // Mask sensitive values for display
+                    $displayValue = mb_strlen($value) > 50 ? mb_substr($value, 0, 47).'...' : $value;
+
+                    if ($first) {
+                        $rows[] = [$partition, $environment, $nodeName, $varName, $displayValue];
+                        $first = false;
+                    } else {
+                        // Empty partition/environment/node for continuation rows
+                        $rows[] = ['', '', '', $varName, $displayValue];
+                    }
+                }
+            }
+        }
+
+        $this->newLine();
+        $this->info('Environment Variables:');
+        $this->table(
+            ['Partition', 'Environment', 'Node', 'Variable', 'Value'],
+            $rows,
+        );
+
+        // Summary
+        $totalVars = $filteredNodes->sum(fn (Node $n): int => count(array_keys($n->export())));
+        $this->info(sprintf('Total: %d variable(s) from %d node(s)', $totalVars, $filteredNodes->count()));
     }
 }

@@ -319,6 +319,7 @@ final class HuckleConfig
     private function nodeMatchesContext(Node $node, array $context): bool
     {
         // Map node types to context keys
+        /** @var array<string, array<int, string>> $typeToContext */
         $typeToContext = [
             'partition' => ['partition', 'tenant', 'namespace', 'division', 'entity'],
             'environment' => ['environment'],
@@ -565,8 +566,15 @@ final class HuckleConfig
     {
         // Extract fields and special blocks
         $fields = $this->extractFieldsFromBody($body);
-        $exports = $this->extractExports($body['export'] ?? []);
-        $connections = $this->extractConnections($body['connect'] ?? []);
+
+        /** @var array<int, array<string, mixed>> $exportBlocks */
+        $exportBlocks = $body['export'] ?? [];
+
+        /** @var array<int, array<string, mixed>> $connectBlocks */
+        $connectBlocks = $body['connect'] ?? [];
+
+        $exports = $this->extractExports($exportBlocks);
+        $connections = $this->extractConnections($connectBlocks);
         $tags = $this->extractTags($body['tags'] ?? null);
 
         // Process child blocks
@@ -681,8 +689,15 @@ final class HuckleConfig
     {
         // Extract fields and special blocks
         $fields = $this->extractFieldsFromBody($body);
-        $exports = $this->extractExports($body['export'] ?? []);
-        $connections = $this->extractConnections($body['connect'] ?? []);
+
+        /** @var array<int, array<string, mixed>> $exportBlocks */
+        $exportBlocks = $body['export'] ?? [];
+
+        /** @var array<int, array<string, mixed>> $connectBlocks */
+        $connectBlocks = $body['connect'] ?? [];
+
+        $exports = $this->extractExports($exportBlocks);
+        $connections = $this->extractConnections($connectBlocks);
 
         // Merge inherited tags with any tags defined on this block
         $ownTags = $this->extractTags($body['tags'] ?? null);
