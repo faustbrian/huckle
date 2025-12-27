@@ -36,7 +36,7 @@ describe('ConfigDecryptCommand', function (): void {
         unlink($file);
 
         // Decrypt
-        artisan('huckle:decrypt', ['file' => $result['path'], '--key' => $key])
+        artisan('huckle:config:decrypt', ['file' => $result['path'], '--key' => $key])
             ->assertSuccessful()
             ->expectsOutputToContain('decrypted successfully');
 
@@ -58,7 +58,7 @@ describe('ConfigDecryptCommand', function (): void {
         file_put_contents($file, 'different = "content"');
 
         // Decrypt with force
-        artisan('huckle:decrypt', ['file' => $result['path'], '--key' => $key, '--force' => true])
+        artisan('huckle:config:decrypt', ['file' => $result['path'], '--key' => $key, '--force' => true])
             ->assertSuccessful();
 
         expect(file_get_contents($file))->toBe($content);
@@ -72,7 +72,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encrypt($file, prune: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', ['file' => $result['path'], '--key' => $key, '--keep' => true])
+        artisan('huckle:config:decrypt', ['file' => $result['path'], '--key' => $key, '--keep' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('Encrypted file has been kept');
 
@@ -89,7 +89,7 @@ describe('ConfigDecryptCommand', function (): void {
         $key = $result['key'];
         $encryptedPath = $result['path'];
 
-        artisan('huckle:decrypt', ['file' => $encryptedPath, '--key' => $key])
+        artisan('huckle:config:decrypt', ['file' => $encryptedPath, '--key' => $key])
             ->assertSuccessful();
 
         expect(file_exists($encryptedPath))->toBeFalse()
@@ -97,14 +97,14 @@ describe('ConfigDecryptCommand', function (): void {
     });
 
     test('fails for non-existent encrypted file', function (): void {
-        artisan('huckle:decrypt', ['file' => '/nonexistent/file.hcl.encrypted', '--key' => 'somekey'])
+        artisan('huckle:config:decrypt', ['file' => '/nonexistent/file.hcl.encrypted', '--key' => 'somekey'])
             ->assertFailed();
     });
 
     test('fails when no key provided and use_app_key is false', function (): void {
         config(['huckle.encryption.use_app_key' => false]);
 
-        artisan('huckle:decrypt', ['file' => $this->tempDir.'/config.hcl.encrypted'])
+        artisan('huckle:config:decrypt', ['file' => $this->tempDir.'/config.hcl.encrypted'])
             ->assertFailed()
             ->expectsOutputToContain('No decryption key provided');
     });
@@ -119,7 +119,7 @@ describe('ConfigDecryptCommand', function (): void {
         // Use a different key
         $wrongKey = base64_encode(random_bytes(32));
 
-        artisan('huckle:decrypt', ['file' => $result['path'], '--key' => $wrongKey, '--force' => true])
+        artisan('huckle:config:decrypt', ['file' => $result['path'], '--key' => $wrongKey, '--force' => true])
             ->assertFailed()
             ->expectsOutputToContain('Decryption failed');
     });
@@ -136,7 +136,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encrypt($file, prune: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $result['path'],
             '--key' => $key,
             '--path' => $outputDir,
@@ -156,7 +156,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encrypt($file, prune: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $result['path'],
             '--key' => $key,
             '--filename' => 'decrypted-config.hcl',
@@ -175,7 +175,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encryptDirectory($this->tempDir, prune: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', ['file' => $this->tempDir, '--key' => $key])
+        artisan('huckle:config:decrypt', ['file' => $this->tempDir, '--key' => $key])
             ->assertSuccessful()
             ->expectsOutputToContain('2 file(s) decrypted');
 
@@ -192,7 +192,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encryptDirectory($this->tempDir, prune: true, recursive: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', ['file' => $this->tempDir, '--key' => $key, '--recursive' => true])
+        artisan('huckle:config:decrypt', ['file' => $this->tempDir, '--key' => $key, '--recursive' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('2 file(s) decrypted');
 
@@ -201,7 +201,7 @@ describe('ConfigDecryptCommand', function (): void {
     });
 
     test('shows warning when no encrypted files found in directory', function (): void {
-        artisan('huckle:decrypt', ['file' => $this->tempDir, '--key' => 'somekey'])
+        artisan('huckle:config:decrypt', ['file' => $this->tempDir, '--key' => 'somekey'])
             ->assertSuccessful()
             ->expectsOutputToContain('No encrypted files found');
     });
@@ -217,7 +217,7 @@ describe('ConfigDecryptCommand', function (): void {
         $manager = resolve(HuckleManager::class);
         $result = $manager->encrypt($file, key: $key, prune: true);
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $result['path'],
             '--app-key' => true,
         ])
@@ -239,7 +239,7 @@ describe('ConfigDecryptCommand', function (): void {
         $manager = resolve(HuckleManager::class);
         $result = $manager->encrypt($file, key: $key, prune: true);
 
-        artisan('huckle:decrypt', ['file' => $result['path']])
+        artisan('huckle:config:decrypt', ['file' => $result['path']])
             ->assertSuccessful();
 
         expect(file_get_contents($file))->toBe($content);
@@ -248,7 +248,7 @@ describe('ConfigDecryptCommand', function (): void {
     test('fails with --app-key when APP_KEY is not set', function (): void {
         config(['app.key' => null]);
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $this->tempDir.'/config.hcl.encrypted',
             '--app-key' => true,
         ])
@@ -267,7 +267,7 @@ describe('ConfigDecryptCommand', function (): void {
 
         $baseFile = $this->tempDir.'/config.hcl';
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $baseFile,
             '--key' => $key,
             '--environment' => 'production',
@@ -291,7 +291,7 @@ describe('ConfigDecryptCommand', function (): void {
 
         $baseFile = $this->tempDir.'/config.hcl';
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $baseFile,
             '--key' => $key,
             '--environment' => 'production',
@@ -313,7 +313,7 @@ describe('ConfigDecryptCommand', function (): void {
         $result = $manager->encrypt($file, cipher: 'AES-128-CBC', prune: true);
         $key = $result['key'];
 
-        artisan('huckle:decrypt', [
+        artisan('huckle:config:decrypt', [
             'file' => $result['path'],
             '--key' => $key,
             '--cipher' => 'AES-128-CBC',

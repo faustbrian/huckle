@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Config;
 describe('ExpiringCommand', function (): void {
     beforeEach(function (): void {
         // Use the expiring.hcl fixture which has:
-        // - expiring_soon (expires 2025-12-20, ~16 days from 2025-12-04)
+        // - expiring_soon (expires 2025-12-20, ~16 days from 2025-12-27)
         // - already_expired (expires 2025-11-01)
         // - needs_rotation (rotated 2025-08-06, ~120 days ago)
         // - healthy (expires 2027-12-01, rotated 2025-11-01)

@@ -26,7 +26,7 @@ describe('ConfigEncryptCommand', function (): void {
         $file = $this->tempDir.'/config.hcl';
         file_put_contents($file, 'secret = "value"');
 
-        artisan('huckle:encrypt', ['file' => $file])
+        artisan('huckle:config:encrypt', ['file' => $file])
             ->assertSuccessful()
             ->expectsOutputToContain('encrypted successfully');
 
@@ -37,7 +37,7 @@ describe('ConfigEncryptCommand', function (): void {
         $file = $this->tempDir.'/config.hcl';
         file_put_contents($file, 'data = "test"');
 
-        artisan('huckle:encrypt', ['file' => $file])
+        artisan('huckle:config:encrypt', ['file' => $file])
             ->assertSuccessful()
             ->expectsOutputToContain('Store this key securely');
     });
@@ -47,7 +47,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($file, 'data = "test"');
         $key = base64_encode(random_bytes(32));
 
-        artisan('huckle:encrypt', ['file' => $file, '--key' => $key])
+        artisan('huckle:config:encrypt', ['file' => $file, '--key' => $key])
             ->assertSuccessful();
 
         expect(file_exists($file.'.encrypted'))->toBeTrue();
@@ -57,7 +57,7 @@ describe('ConfigEncryptCommand', function (): void {
         $file = $this->tempDir.'/config.hcl';
         file_put_contents($file, 'data = "test"');
 
-        artisan('huckle:encrypt', ['file' => $file, '--prune' => true])
+        artisan('huckle:config:encrypt', ['file' => $file, '--prune' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('deleted');
 
@@ -69,17 +69,17 @@ describe('ConfigEncryptCommand', function (): void {
         $file = $this->tempDir.'/config.hcl';
         file_put_contents($file, 'data = "original"');
 
-        artisan('huckle:encrypt', ['file' => $file])
+        artisan('huckle:config:encrypt', ['file' => $file])
             ->assertSuccessful();
 
         file_put_contents($file, 'data = "updated"');
 
-        artisan('huckle:encrypt', ['file' => $file, '--force' => true])
+        artisan('huckle:config:encrypt', ['file' => $file, '--force' => true])
             ->assertSuccessful();
     });
 
     test('fails for non-existent file', function (): void {
-        artisan('huckle:encrypt', ['file' => '/nonexistent/file.hcl'])
+        artisan('huckle:config:encrypt', ['file' => '/nonexistent/file.hcl'])
             ->assertFailed();
     });
 
@@ -88,7 +88,7 @@ describe('ConfigEncryptCommand', function (): void {
         $envFile = $this->tempDir.'/config.production.hcl';
         file_put_contents($envFile, 'env = "production"');
 
-        artisan('huckle:encrypt', ['file' => $baseFile, '--environment' => 'production'])
+        artisan('huckle:config:encrypt', ['file' => $baseFile, '--environment' => 'production'])
             ->assertSuccessful();
 
         expect(file_exists($envFile.'.encrypted'))->toBeTrue();
@@ -101,7 +101,7 @@ describe('ConfigEncryptCommand', function (): void {
         $envFile = $envDir.'/config.hcl';
         file_put_contents($envFile, 'env = "production"');
 
-        artisan('huckle:encrypt', [
+        artisan('huckle:config:encrypt', [
             'file' => $baseFile,
             '--environment' => 'production',
             '--env-style' => 'directory',
@@ -115,7 +115,7 @@ describe('ConfigEncryptCommand', function (): void {
         $file = $this->tempDir.'/config.hcl';
         file_put_contents($file, 'data = "test"');
 
-        artisan('huckle:encrypt', ['file' => $file, '--cipher' => 'AES-128-CBC'])
+        artisan('huckle:config:encrypt', ['file' => $file, '--cipher' => 'AES-128-CBC'])
             ->assertSuccessful()
             ->expectsOutputToContain('AES-128-CBC');
     });
@@ -125,7 +125,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($this->tempDir.'/config2.hcl', 'key2 = "value2"');
         file_put_contents($this->tempDir.'/config3.json', '{"key3": "value3"}');
 
-        artisan('huckle:encrypt', ['file' => $this->tempDir])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir])
             ->assertSuccessful()
             ->expectsOutputToContain('3 file(s) encrypted');
 
@@ -139,7 +139,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($this->tempDir.'/config2.hcl', 'key2 = "value2"');
         file_put_contents($this->tempDir.'/config3.json', '{"key3": "value3"}');
 
-        artisan('huckle:encrypt', ['file' => $this->tempDir, '--glob' => '*.hcl'])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir, '--glob' => '*.hcl'])
             ->assertSuccessful()
             ->expectsOutputToContain('2 file(s) encrypted');
 
@@ -153,7 +153,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($this->tempDir.'/config1.hcl', 'key1 = "value1"');
         file_put_contents($this->tempDir.'/subdir/config2.hcl', 'key2 = "value2"');
 
-        artisan('huckle:encrypt', ['file' => $this->tempDir, '--recursive' => true])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir, '--recursive' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('2 file(s) encrypted');
 
@@ -165,7 +165,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($this->tempDir.'/config1.hcl', 'key1 = "value1"');
         file_put_contents($this->tempDir.'/config2.hcl', 'key2 = "value2"');
 
-        artisan('huckle:encrypt', ['file' => $this->tempDir, '--prune' => true])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir, '--prune' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('deleted');
 
@@ -176,7 +176,7 @@ describe('ConfigEncryptCommand', function (): void {
     });
 
     test('encrypts empty directory with warning', function (): void {
-        artisan('huckle:encrypt', ['file' => $this->tempDir])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir])
             ->assertSuccessful()
             ->expectsOutputToContain('No files found');
     });
@@ -185,7 +185,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($this->tempDir.'/config.hcl', 'key = "value"');
         file_put_contents($this->tempDir.'/already.hcl.encrypted', 'encrypted-data');
 
-        artisan('huckle:encrypt', ['file' => $this->tempDir])
+        artisan('huckle:config:encrypt', ['file' => $this->tempDir])
             ->assertSuccessful()
             ->expectsOutputToContain('1 file(s) encrypted');
 
@@ -201,7 +201,7 @@ describe('ConfigEncryptCommand', function (): void {
         $content = 'secret = "value"';
         file_put_contents($file, $content);
 
-        artisan('huckle:encrypt', [
+        artisan('huckle:config:encrypt', [
             'file' => $file,
             '--app-key' => true,
         ])
@@ -227,7 +227,7 @@ describe('ConfigEncryptCommand', function (): void {
         $content = 'secret = "value"';
         file_put_contents($file, $content);
 
-        artisan('huckle:encrypt', ['file' => $file])
+        artisan('huckle:config:encrypt', ['file' => $file])
             ->assertSuccessful()
             ->expectsOutputToContain('encrypted successfully');
 
@@ -253,7 +253,7 @@ describe('ConfigEncryptCommand', function (): void {
         file_put_contents($file, $content);
 
         // Passing both --key and --app-key, --key should win
-        artisan('huckle:encrypt', [
+        artisan('huckle:config:encrypt', [
             'file' => $file,
             '--key' => $encryptionKey,
             '--app-key' => true,
@@ -270,7 +270,7 @@ describe('ConfigEncryptCommand', function (): void {
     test('fails with --app-key when APP_KEY is not set', function (): void {
         config(['app.key' => null]);
 
-        artisan('huckle:encrypt', [
+        artisan('huckle:config:encrypt', [
             'file' => $this->tempDir.'/config.hcl',
             '--app-key' => true,
         ])

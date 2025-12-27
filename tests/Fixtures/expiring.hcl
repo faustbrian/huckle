@@ -1,15 +1,15 @@
 # Fixture for testing expiring, expired, and rotation scenarios
 
 group "database" "production" {
-  # Credential expiring in 15 days (within the 30-day warning window)
+  # Credential expiring in 16 days (within the 30-day warning window)
   credential "expiring_soon" {
     host     = "db.prod.internal"
     port     = 5432
     username = "expiring_user"
     password = sensitive("expiring123")
     database = "myapp"
-    expires  = "2025-12-20"  # ~16 days from 2025-12-04
-    rotated  = "2025-11-01"
+    expires  = "2026-01-12"  # ~16 days from 2025-12-27
+    rotated  = "2025-11-27"
 
     export {
       DB_HOST_EXPIRING = self.host
@@ -23,8 +23,8 @@ group "database" "production" {
     username = "expired_user"
     password = sensitive("expired123")
     database = "myapp"
-    expires  = "2025-11-01"  # Already expired
-    rotated  = "2025-09-01"
+    expires  = "2025-12-01"  # Already expired (26 days ago from 2025-12-27)
+    rotated  = "2025-10-01"
 
     export {
       DB_HOST_EXPIRED = self.host
@@ -39,7 +39,7 @@ group "database" "production" {
     password = sensitive("rotation123")
     database = "myapp"
     expires  = "2027-12-01"  # Far in future - not expiring
-    rotated  = "2025-08-06"  # 120 days ago from 2025-12-04
+    rotated  = "2025-08-29"  # 120 days ago from 2025-12-27
 
     export {
       DB_HOST_ROTATION = self.host
@@ -54,7 +54,7 @@ group "database" "production" {
     password = sensitive("healthy123")
     database = "myapp"
     expires  = "2027-12-01"  # Far in future - not expiring
-    rotated  = "2025-11-01"  # Recently rotated
+    rotated  = "2025-11-27"  # Recently rotated (30 days ago)
 
     export {
       DB_HOST_HEALTHY = self.host
