@@ -10,7 +10,7 @@ Convert between HCL and JSON formats for interoperability with other tools.
 
 ```bash
 # Convert to stdout
-php artisan huckle:hcl2json credentials.hcl
+php artisan huckle:convert:to-json credentials.hcl
 
 # Output:
 # {
@@ -29,10 +29,10 @@ php artisan huckle:hcl2json credentials.hcl
 # }
 
 # Convert to file
-php artisan huckle:hcl2json credentials.hcl credentials.json
+php artisan huckle:convert:to-json credentials.hcl credentials.json
 
 # Compact output (no pretty printing)
-php artisan huckle:hcl2json credentials.hcl --compact
+php artisan huckle:convert:to-json credentials.hcl --compact
 ```
 
 ### In Code
@@ -68,7 +68,7 @@ $data = Hcl::parseFile('/path/to/config.hcl');
 
 ```bash
 # Convert to stdout
-php artisan huckle:json2hcl config.json
+php artisan huckle:convert:to-hcl config.json
 
 # Output:
 # name = "my-app"
@@ -76,7 +76,7 @@ php artisan huckle:json2hcl config.json
 # enabled = true
 
 # Convert to file
-php artisan huckle:json2hcl config.json config.hcl
+php artisan huckle:convert:to-hcl config.json config.hcl
 ```
 
 ### In Code
@@ -210,7 +210,7 @@ assert($reparsed['tags'] === ['a', 'b', 'c']);
 ENVIRONMENT=$1
 
 # Convert HCL to JSON for processing
-php artisan huckle:hcl2json credentials.hcl /tmp/creds.json
+php artisan huckle:convert:to-json credentials.hcl /tmp/creds.json
 
 # Extract environment-specific values with jq
 DB_HOST=$(jq -r ".group.database.${ENVIRONMENT}.credential.main.host" /tmp/creds.json)

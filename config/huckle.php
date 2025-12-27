@@ -99,8 +99,9 @@ return [
     | Rotation Warning (Days)
     |--------------------------------------------------------------------------
     |
-    | Nodes with credentials that haven't been rotated within this many days
-    | will be flagged in the huckle:expiring command and lint checks.
+    | Configuration entries with credentials that haven't been rotated within
+    | this many days will be flagged in the huckle:expiring command and lint
+    | checks.
     |
     */
 
@@ -111,8 +112,8 @@ return [
     | Expiry Warning (Days)
     |--------------------------------------------------------------------------
     |
-    | Nodes that will expire within this many days will be flagged
-    | in the huckle:expiring command and lint checks.
+    | Configuration entries that will expire within this many days will be
+    | flagged in the huckle:expiring command and lint checks.
     |
     */
 

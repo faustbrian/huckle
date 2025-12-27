@@ -1,15 +1,15 @@
 # Getting Started with Huckle
 
-Create and manage nodes using HCL syntax with environment organization, tagging, and sensitive value protection.
+Create and manage configuration using HCL syntax with environment organization, tagging, and sensitive value protection.
 
-**Use case:** Managing database, API, and service nodes across development, staging, and production environments.
+**Use case:** Managing database, API, and service credentials across development, staging, and production environments.
 
-## Creating Your First Nodes File
+## Creating Your First Configuration File
 
-Create a `nodes.hcl` file in your project root or a secure location:
+Create a `.huckle` file in your project root or a secure location:
 
 ```hcl
-# nodes.hcl
+# .huckle
 
 # Default values applied to all nodes
 defaults {
@@ -59,18 +59,18 @@ Update your `config/huckle.php`:
 
 ```php
 return [
-    // Path to your nodes file
-    'path' => env('HUCKLE_PATH', base_path('nodes.hcl')),
+    // Path to your HCL configuration file
+    'path' => env('HUCKLE_PATH', base_path('.huckle')),
 
-    // Default days to check for expiring nodes
+    // Default days to check for expiring credentials
     'expiring_days' => 30,
 
-    // Auto-export all nodes to env on boot
+    // Auto-export all configuration to env on boot
     'auto_export' => false,
 ];
 ```
 
-## Accessing Nodes in Code
+## Accessing Configuration in Code
 
 ```php
 use Cline\Huckle\Facades\Huckle;
@@ -120,7 +120,7 @@ php artisan huckle:show database.production.main
 
 ## Validating Configuration
 
-Check your nodes file for errors:
+Check your HCL configuration file for errors:
 
 ```bash
 php artisan huckle:lint

@@ -47,7 +47,7 @@ final class ExportCommand extends Command
         {path? : The node path to export (exports all if omitted)}
         {--format=dotenv : Output format (dotenv, json, shell)}
         {--partition= : Filter by partition name}
-        {--env= : Filter by environment}
+        {--environment= : Filter by environment}
         {--tag=* : Filter by tags}';
 
     /**
@@ -80,7 +80,7 @@ final class ExportCommand extends Command
         $partition = $this->option('partition');
 
         /** @var null|string $env */
-        $env = $this->option('env');
+        $env = $this->option('environment');
 
         /** @var array<string> $tags */
         $tags = $this->option('tag');

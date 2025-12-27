@@ -51,7 +51,7 @@ final class SyncCommand extends Command
         {--replace : Replace entire .env instead of merging}
         {--dry-run : Show what would be changed without writing}
         {--partition= : Filter by partition name}
-        {--env= : Filter by environment}';
+        {--environment= : Filter by environment}';
 
     /**
      * The console command description.
@@ -86,7 +86,7 @@ final class SyncCommand extends Command
         $partition = $this->option('partition');
 
         /** @var null|string $env */
-        $env = $this->option('env');
+        $env = $this->option('environment');
 
         // Get exports
         $nodes = $huckle->nodes();

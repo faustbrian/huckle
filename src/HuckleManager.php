@@ -626,7 +626,7 @@ final class HuckleManager
     /**
      * Encrypt a configuration file.
      *
-     * @param string      $filepath Path to the configuration file
+     * @param string      $filePath Path to the configuration file
      * @param null|string $key      Encryption key (generates one if null)
      * @param null|string $cipher   Cipher algorithm (default from config or AES-256-CBC)
      * @param bool        $prune    Delete the original file after encryption (default: false)
@@ -640,7 +640,7 @@ final class HuckleManager
      * @return array{path: string, key: string} The encrypted file path and key
      */
     public function encrypt(
-        string $filepath,
+        string $filePath,
         ?string $key = null,
         ?string $cipher = null,
         bool $prune = false,
@@ -651,7 +651,7 @@ final class HuckleManager
         /** @var string $resolvedCipher */
         $resolvedCipher = $cipher ?? $this->getEncryptionConfig('cipher', 'AES-256-CBC');
 
-        $sourcePath = $this->resolveEnvFilePath($filepath, $env, $envStyle);
+        $sourcePath = $this->resolveEnvFilePath($filePath, $env, $envStyle);
 
         if (!file_exists($sourcePath)) {
             throw FileNotFoundException::forPath($sourcePath);
@@ -694,15 +694,15 @@ final class HuckleManager
     /**
      * Decrypt an encrypted configuration file.
      *
-     * @param string      $encryptedPath Path to the encrypted file
-     * @param string      $key           The decryption key
-     * @param bool        $force         Overwrite existing decrypted file (default: false)
-     * @param null|string $cipher        Cipher algorithm
-     * @param null|string $path          Custom output directory path
-     * @param null|string $filename      Custom output filename
-     * @param null|string $env           Environment name
-     * @param bool        $prune         Delete the encrypted file after decryption (default: false)
-     * @param null|string $envStyle      Environment style
+     * @param string      $encryptedFilePath Path to the encrypted file
+     * @param string      $key               The decryption key
+     * @param bool        $force             Overwrite existing decrypted file (default: false)
+     * @param null|string $cipher            Cipher algorithm
+     * @param null|string $path              Custom output directory path
+     * @param null|string $filename          Custom output filename
+     * @param null|string $env               Environment name
+     * @param bool        $prune             Delete the encrypted file after decryption (default: false)
+     * @param null|string $envStyle          Environment style
      *
      * @throws DecryptionFailedException If decryption fails
      * @throws FileNotFoundException     If encrypted file doesn't exist
@@ -710,7 +710,7 @@ final class HuckleManager
      * @return string Path to the decrypted file
      */
     public function decrypt(
-        string $encryptedPath,
+        string $encryptedFilePath,
         string $key,
         bool $force = false,
         ?string $cipher = null,
@@ -724,8 +724,8 @@ final class HuckleManager
         $resolvedCipher = $cipher ?? $this->getEncryptionConfig('cipher', 'AES-256-CBC');
 
         $sourcePath = $env !== null
-            ? $this->resolveEnvFilePath($encryptedPath, $env, $envStyle).'.encrypted'
-            : $encryptedPath;
+            ? $this->resolveEnvFilePath($encryptedFilePath, $env, $envStyle).'.encrypted'
+            : $encryptedFilePath;
 
         if (!file_exists($sourcePath)) {
             throw FileNotFoundException::forPath($sourcePath);
@@ -805,7 +805,7 @@ final class HuckleManager
 
         foreach ($files as $file) {
             $results[] = $this->encrypt(
-                filepath: $file,
+                filePath: $file,
                 key: $key,
                 cipher: $cipher,
                 prune: $prune,
@@ -850,7 +850,7 @@ final class HuckleManager
 
         foreach ($files as $file) {
             $results[] = $this->decrypt(
-                encryptedPath: $file,
+                encryptedFilePath: $file,
                 key: $key,
                 force: $force,
                 cipher: $cipher,
@@ -1047,20 +1047,20 @@ final class HuckleManager
     /**
      * Resolve environment-specific file path.
      *
-     * @param  string      $filepath Base file path
+     * @param  string      $filePath Base file path
      * @param  null|string $env      Environment name
      * @param  null|string $envStyle Environment style: 'suffix' or 'directory'
      * @return string      Resolved file path
      */
-    private function resolveEnvFilePath(string $filepath, ?string $env, ?string $envStyle = null): string
+    private function resolveEnvFilePath(string $filePath, ?string $env, ?string $envStyle = null): string
     {
         if ($env === null) {
-            return $filepath;
+            return $filePath;
         }
 
         $envStyle ??= $this->getEncryptionConfig('env_style', 'suffix');
-        $directory = dirname($filepath);
-        $filename = basename($filepath);
+        $directory = dirname($filePath);
+        $filename = basename($filePath);
 
         if ($envStyle === 'directory') {
             /** @var null|string $envDirectory */
@@ -1073,8 +1073,8 @@ final class HuckleManager
             return $directory.DIRECTORY_SEPARATOR.$env.DIRECTORY_SEPARATOR.$filename;
         }
 
-        $baseFilename = pathinfo($filepath, PATHINFO_FILENAME);
-        $extension = pathinfo($filepath, PATHINFO_EXTENSION);
+        $baseFilename = pathinfo($filePath, PATHINFO_FILENAME);
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
 
         return $directory.DIRECTORY_SEPARATOR.$baseFilename.'.'.$env.'.'.$extension;
     }
@@ -1094,19 +1094,19 @@ final class HuckleManager
     /**
      * Resolve the decrypted file output path.
      *
-     * @param  string      $encryptedPath Original encrypted file path
-     * @param  null|string $path          Custom output directory
-     * @param  null|string $filename      Custom output filename
+     * @param  string      $encryptedFilePath Original encrypted file path
+     * @param  null|string $path              Custom output directory
+     * @param  null|string $filename          Custom output filename
      * @return string      Resolved output path
      */
-    private function resolveDecryptedPath(string $encryptedPath, ?string $path, ?string $filename): string
+    private function resolveDecryptedPath(string $encryptedFilePath, ?string $path, ?string $filename): string
     {
-        $baseFilename = preg_match('/\.encrypted$/', $encryptedPath)
-            ? basename($encryptedPath, '.encrypted')
-            : basename($encryptedPath).'.decrypted';
+        $baseFilename = preg_match('/\.encrypted$/', $encryptedFilePath)
+            ? basename($encryptedFilePath, '.encrypted')
+            : basename($encryptedFilePath).'.decrypted';
 
         $outputFilename = $filename ?? $baseFilename;
-        $outputDir = $path ?? dirname($encryptedPath);
+        $outputDir = $path ?? dirname($encryptedFilePath);
 
         return mb_rtrim($outputDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$outputFilename;
     }

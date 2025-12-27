@@ -42,12 +42,12 @@ final class ConfigDecryptCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'huckle:decrypt
+    protected $signature = 'huckle:config:decrypt
         {file : The encrypted configuration file or directory to decrypt}
         {--key= : The encryption key}
         {--app-key : Use the application APP_KEY for decryption}
         {--cipher= : The encryption cipher (default: AES-256-CBC)}
-        {--env= : The environment suffix or directory}
+        {--environment= : The environment suffix or directory}
         {--env-style= : Environment file style: suffix or directory}
         {--path= : Custom output directory}
         {--filename= : Custom output filename}
@@ -101,7 +101,7 @@ final class ConfigDecryptCommand extends Command
         $cipher = $this->option('cipher');
 
         /** @var null|string $env */
-        $env = $this->option('env');
+        $env = $this->option('environment');
 
         /** @var null|string $envStyle */
         $envStyle = $this->option('env-style');
@@ -167,7 +167,7 @@ final class ConfigDecryptCommand extends Command
     ): int {
         try {
             $decryptedPath = $manager->decrypt(
-                encryptedPath: $file,
+                encryptedFilePath: $file,
                 key: $key,
                 force: $force,
                 cipher: $cipher,

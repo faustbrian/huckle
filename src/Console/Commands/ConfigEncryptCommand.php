@@ -46,12 +46,12 @@ final class ConfigEncryptCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'huckle:encrypt
+    protected $signature = 'huckle:config:encrypt
         {file : The configuration file or directory to encrypt}
         {--key= : The encryption key (generates one if not provided)}
         {--app-key : Use the application APP_KEY for encryption}
         {--cipher= : The encryption cipher (default: AES-256-CBC)}
-        {--env= : The environment suffix or directory}
+        {--environment= : The environment suffix or directory}
         {--env-style= : Environment file style: suffix or directory}
         {--prune : Delete the original file(s) after encryption}
         {--force : Overwrite existing encrypted file(s)}
@@ -97,7 +97,7 @@ final class ConfigEncryptCommand extends Command
         $cipher = $this->option('cipher');
 
         /** @var null|string $env */
-        $env = $this->option('env');
+        $env = $this->option('environment');
 
         /** @var null|string $envStyle */
         $envStyle = $this->option('env-style');
@@ -165,7 +165,7 @@ final class ConfigEncryptCommand extends Command
     ): int {
         try {
             $result = $manager->encrypt(
-                filepath: $file,
+                filePath: $file,
                 key: $key,
                 cipher: $cipher,
                 prune: $prune,

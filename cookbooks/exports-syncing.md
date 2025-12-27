@@ -83,7 +83,7 @@ php artisan huckle:export --format=shell
 php artisan huckle:export --path=database.production.main
 
 # Export by environment
-php artisan huckle:export --env=production
+php artisan huckle:export --environment=production
 
 # Export by group
 php artisan huckle:export --partition=database
@@ -120,7 +120,7 @@ php artisan huckle:sync --env-file=.env.production
 php artisan huckle:sync --path=database.production.main
 
 # Sync by environment
-php artisan huckle:sync --env=production
+php artisan huckle:sync --environment=production
 
 # Sync by group
 php artisan huckle:sync --partition=database

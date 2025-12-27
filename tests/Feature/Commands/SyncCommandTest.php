@@ -140,7 +140,7 @@ describe('SyncCommand', function (): void {
             // Act
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--env' => 'production',
+                '--environment' => 'production',
             ])->assertSuccessful();
 
             // Assert
@@ -227,7 +227,7 @@ describe('SyncCommand', function (): void {
             // Act & Assert
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
-                '--env' => 'nonexistent-env',
+                '--environment' => 'nonexistent-env',
             ])
                 ->assertFailed()
                 ->expectsOutputToContain('No nodes found to sync.')
@@ -348,7 +348,7 @@ ENV;
             $this->artisan('huckle:sync', [
                 '--path' => $this->tempEnvPath,
                 '--partition' => 'database',
-                '--env' => 'production',
+                '--environment' => 'production',
             ])->assertSuccessful();
 
             // Assert

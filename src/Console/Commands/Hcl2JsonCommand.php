@@ -39,7 +39,7 @@ final class Hcl2JsonCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'huckle:hcl2json
+    protected $signature = 'huckle:convert:to-json
         {input : Path to the HCL file}
         {output? : Path for the output JSON file (defaults to stdout)}
         {--compact : Output compact JSON without pretty printing}';

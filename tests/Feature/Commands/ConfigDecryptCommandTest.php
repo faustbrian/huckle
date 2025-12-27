@@ -270,7 +270,7 @@ describe('ConfigDecryptCommand', function (): void {
         artisan('huckle:decrypt', [
             'file' => $baseFile,
             '--key' => $key,
-            '--env' => 'production',
+            '--environment' => 'production',
         ])
             ->assertSuccessful();
 
@@ -294,7 +294,7 @@ describe('ConfigDecryptCommand', function (): void {
         artisan('huckle:decrypt', [
             'file' => $baseFile,
             '--key' => $key,
-            '--env' => 'production',
+            '--environment' => 'production',
             '--env-style' => 'directory',
         ])
             ->assertSuccessful();

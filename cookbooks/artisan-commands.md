@@ -14,8 +14,8 @@ All CLI commands available in Huckle for managing nodes.
 | `huckle:connect {path} {connection}` | Execute connection command |
 | `huckle:diff {env1} {env2}` | Compare environments |
 | `huckle:expiring` | List expiring nodes |
-| `huckle:hcl2json {input} [output]` | Convert HCL to JSON |
-| `huckle:json2hcl {input} [output]` | Convert JSON to HCL |
+| `huckle:convert:to-json {input} [output]` | Convert HCL to JSON |
+| `huckle:convert:to-hcl {input} [output]` | Convert JSON to HCL |
 
 ## Command Details
 
@@ -116,26 +116,26 @@ php artisan huckle:expiring
 php artisan huckle:expiring --days=7
 ```
 
-### huckle:hcl2json
+### huckle:convert:to-json
 
 Convert HCL file to JSON:
 
 ```bash
 # Output to stdout
-php artisan huckle:hcl2json nodes.hcl
+php artisan huckle:convert:to-json nodes.hcl
 
 # Output to file
-php artisan huckle:hcl2json nodes.hcl nodes.json
+php artisan huckle:convert:to-json nodes.hcl nodes.json
 ```
 
-### huckle:json2hcl
+### huckle:convert:to-hcl
 
 Convert JSON file to HCL:
 
 ```bash
 # Output to stdout
-php artisan huckle:json2hcl nodes.json
+php artisan huckle:convert:to-hcl nodes.json
 
 # Output to file
-php artisan huckle:json2hcl nodes.json nodes.hcl
+php artisan huckle:convert:to-hcl nodes.json nodes.hcl
 ```

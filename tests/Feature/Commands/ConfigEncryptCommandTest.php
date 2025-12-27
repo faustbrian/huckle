@@ -88,7 +88,7 @@ describe('ConfigEncryptCommand', function (): void {
         $envFile = $this->tempDir.'/config.production.hcl';
         file_put_contents($envFile, 'env = "production"');
 
-        artisan('huckle:encrypt', ['file' => $baseFile, '--env' => 'production'])
+        artisan('huckle:encrypt', ['file' => $baseFile, '--environment' => 'production'])
             ->assertSuccessful();
 
         expect(file_exists($envFile.'.encrypted'))->toBeTrue();
@@ -103,7 +103,7 @@ describe('ConfigEncryptCommand', function (): void {
 
         artisan('huckle:encrypt', [
             'file' => $baseFile,
-            '--env' => 'production',
+            '--environment' => 'production',
             '--env-style' => 'directory',
         ])
             ->assertSuccessful();

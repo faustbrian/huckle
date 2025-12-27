@@ -79,43 +79,43 @@ Huckle::decrypt(
 
 ```bash
 # Encrypt a file (generates and displays key)
-php artisan huckle:encrypt config/credentials.hcl
+php artisan huckle:config:encrypt config/credentials.hcl
 
 # Encrypt with a specific key
-php artisan huckle:encrypt config/credentials.hcl --key="base64:ABC123..."
+php artisan huckle:config:encrypt config/credentials.hcl --key="base64:ABC123..."
 
 # Encrypt using APP_KEY
-php artisan huckle:encrypt config/credentials.hcl --app-key
+php artisan huckle:config:encrypt config/credentials.hcl --app-key
 
 # Encrypt and delete original
-php artisan huckle:encrypt config/credentials.hcl --prune
+php artisan huckle:config:encrypt config/credentials.hcl --prune
 
 # Decrypt a file
-php artisan huckle:decrypt config/credentials.hcl.encrypted --key="base64:ABC123..."
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --key="base64:ABC123..."
 
 # Decrypt using APP_KEY
-php artisan huckle:decrypt config/credentials.hcl.encrypted --app-key
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --app-key
 
 # Decrypt with force overwrite
-php artisan huckle:decrypt config/credentials.hcl.encrypted --key="..." --force
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --key="..." --force
 
 # Decrypt to custom path
-php artisan huckle:decrypt config/credentials.hcl.encrypted --key="..." --path=/var/www/config
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --key="..." --path=/var/www/config
 
 # Decrypt with custom filename
-php artisan huckle:decrypt config/credentials.hcl.encrypted --key="..." --filename=decrypted.hcl
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --key="..." --filename=decrypted.hcl
 
 # Use custom cipher
-php artisan huckle:encrypt config/credentials.hcl --cipher=AES-128-CBC
-php artisan huckle:decrypt config/credentials.hcl.encrypted --key="..." --cipher=AES-128-CBC
+php artisan huckle:config:encrypt config/credentials.hcl --cipher=AES-128-CBC
+php artisan huckle:config:decrypt config/credentials.hcl.encrypted --key="..." --cipher=AES-128-CBC
 
 # Environment-specific encryption (suffix style)
-php artisan huckle:encrypt config/credentials.hcl --env=production
-php artisan huckle:decrypt config/credentials.hcl --key="..." --env=production
+php artisan huckle:config:encrypt config/credentials.hcl --environment=production
+php artisan huckle:config:decrypt config/credentials.hcl --key="..." --environment=production
 
 # Environment-specific encryption (directory style)
-php artisan huckle:encrypt config/credentials.hcl --env=production --env-style=directory
-php artisan huckle:decrypt config/credentials.hcl --key="..." --env=production --env-style=directory
+php artisan huckle:config:encrypt config/credentials.hcl --environment=production --env-style=directory
+php artisan huckle:config:decrypt config/credentials.hcl --key="..." --environment=production --env-style=directory
 ```
 
 ## Environment-Specific Files: Suffix Style (Default)
@@ -293,19 +293,19 @@ $decryptedPaths = Huckle::decryptDirectory(
 
 ```bash
 # Encrypt directory
-php artisan huckle:encrypt .huckle
+php artisan huckle:config:encrypt .huckle
 
 # Encrypt recursively with glob filter
-php artisan huckle:encrypt .huckle --recursive --glob='*.hcl'
+php artisan huckle:config:encrypt .huckle --recursive --glob='*.hcl'
 
 # Delete originals after encryption
-php artisan huckle:encrypt .huckle --recursive --prune
+php artisan huckle:config:encrypt .huckle --recursive --prune
 
 # Decrypt directory
-php artisan huckle:decrypt .huckle --key="base64:ABC123..."
+php artisan huckle:config:decrypt .huckle --key="base64:ABC123..."
 
 # Decrypt recursively, keep encrypted files
-php artisan huckle:decrypt .huckle --key="..." --recursive --keep
+php artisan huckle:config:decrypt .huckle --key="..." --recursive --keep
 ```
 
 ## Complete Example: Secure Deployment Workflow

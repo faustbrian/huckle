@@ -100,7 +100,7 @@ describe('ExportCommand', function (): void {
         test('filters credentials by environment', function (): void {
             // Arrange & Act & Assert
             $this->artisan('huckle:export', [
-                '--env' => 'production',
+                '--environment' => 'production',
             ])
                 ->expectsOutputToContain('DB_HOST')
                 ->assertExitCode(0);
@@ -128,7 +128,7 @@ describe('ExportCommand', function (): void {
             // Arrange & Act & Assert
             $this->artisan('huckle:export', [
                 '--partition' => 'database',
-                '--env' => 'production',
+                '--environment' => 'production',
                 '--tag' => ['prod'],
             ])
                 ->expectsOutputToContain('DB_HOST')
@@ -158,7 +158,7 @@ describe('ExportCommand', function (): void {
         test('shows warning when environment filter matches nothing', function (): void {
             // Arrange & Act
             $this->artisan('huckle:export', [
-                '--env' => 'nonexistent-env',
+                '--environment' => 'nonexistent-env',
             ])
                 ->expectsOutput('No nodes found matching the criteria.')
                 ->assertExitCode(1);
