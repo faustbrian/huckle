@@ -1,8 +1,3 @@
----
-title: Config Cache Compatibility
-description: Make Huckle work seamlessly with Laravel's config:cache command.
----
-
 Make Huckle work seamlessly with Laravel's `config:cache` command.
 
 **Use case:** Production deployments where `php artisan config:cache` is used for performance optimization.

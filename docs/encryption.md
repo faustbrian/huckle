@@ -1,8 +1,3 @@
----
-title: Encryption
-description: Encrypt and decrypt HCL configuration files for secure storage and deployment using Laravel's Encrypter with AES-256-CBC.
----
-
 Encrypt and decrypt HCL configuration files for secure storage and deployment using Laravel's Encrypter with AES-256-CBC.
 
 **Use cases:** Encrypting sensitive configs at rest, storing encrypted configs in version control, and decrypting during deployment.

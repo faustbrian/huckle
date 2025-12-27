@@ -1,8 +1,3 @@
----
-title: Artisan Commands
-description: All CLI commands available in Huckle for managing nodes.
----
-
 ## Available Commands
 
 | Command | Description |

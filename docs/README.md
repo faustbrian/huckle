@@ -1,8 +1,3 @@
----
-title: Getting Started
-description: Create and manage nodes using HCL syntax with environment organization, tagging, and sensitive value protection.
----
-
 Create and manage nodes using HCL syntax with environment organization, tagging, and sensitive value protection.
 
 **Use case:** Managing database, API, and service nodes across development, staging, and production environments.

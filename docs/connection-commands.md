@@ -1,8 +1,3 @@
----
-title: Connection Commands
-description: Define and execute CLI connection commands for nodes like database clients, SSH, and APIs.
----
-
 Define and execute CLI connection commands for nodes like database clients, SSH, and APIs.
 
 **Use case:** Quick access to database shells, SSH connections, and other CLI tools using stored nodes.

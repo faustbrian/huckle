@@ -1,8 +1,3 @@
----
-title: Environment Management
-description: Organize nodes by environment (development, staging, production) and switch contexts dynamically.
----
-
 Organize nodes by environment (development, staging, production) and switch contexts dynamically.
 
 **Use case:** Managing the same services across multiple environments with environment-specific configurations.

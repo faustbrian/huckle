@@ -1,8 +1,3 @@
----
-title: Exports Syncing
-description: Export node values to environment variables and sync them to your .env file.
----
-
 Export node values to environment variables and sync them to your .env file.
 
 **Use case:** Keeping your `.env` file in sync with your HCL configuration, especially during development.

@@ -1,8 +1,3 @@
----
-title: Nested Hierarchy Credentials
-description: Organize credentials in deeply nested hierarchies for complex multi-tenant or multi-region setups.
----
-
 Organize credentials in deeply nested hierarchies for complex multi-tenant or multi-region setups.
 
 **Use case:** Managing credentials across multiple countries, tenants, environments, and service providers.

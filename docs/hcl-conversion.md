@@ -1,8 +1,3 @@
----
-title: HCL Conversion
-description: Convert between HCL and JSON formats for interoperability and migration.
----
-
 Convert between HCL and JSON formats for interoperability and migration.
 
 **Use case:** Integrating with tools that expect JSON, generating HCL from code, or migrating configurations.
