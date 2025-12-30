@@ -21,16 +21,16 @@
     ],
     "require": {
         "php": "^8.4.0",
-        "cline/hcl": "^1.1",
-        "illuminate/contracts": "^10.0||^11.0||^12.0",
-        "illuminate/support": "^10.0||^11.0||^12.0",
+        "cline/hcl": "^1.1.1",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
         "spatie/laravel-package-tools": "^1.92.7",
-        "symfony/intl": "^7.4 || ^8.0"
+        "symfony/intl": "^7.4 || ^8.0.1"
     },
     "require-dev": {
-        "cline/coding-standard": "^1.6.2",
-        "orchestra/testbench": "^8.0|^9.0|^10.0",
-        "symfony/var-dumper": "^6.0|^7.0"
+        "cline/coding-standard": "^1.6.3",
+        "orchestra/testbench": "^8.0 || ^9.0 || ^10.8",
+        "symfony/var-dumper": "^6.0 || ^7.4"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
