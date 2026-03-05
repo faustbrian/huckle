@@ -10,6 +10,9 @@
 namespace Cline\Huckle\Exceptions;
 
 use Exception;
+use Facade\IgnitionContracts\BaseSolution;
+use Facade\IgnitionContracts\ProvidesSolution;
+use Facade\IgnitionContracts\Solution;
 
 use function array_map;
 use function count;
@@ -25,7 +28,7 @@ use function sprintf;
  *
  * @author Brian Faust <brian@cline.sh>
  */
-final class ValidationException extends Exception implements HuckleException
+final class ValidationException extends Exception implements HuckleException, ProvidesSolution
 {
     /**
      * Create a new validation exception.
@@ -86,5 +89,17 @@ final class ValidationException extends Exception implements HuckleException
             fn (array $error): string => $error['message'],
             $this->errors,
         );
+    }
+
+    public function getSolution(): Solution
+    {
+        /** @var BaseSolution $solution */
+        $solution = BaseSolution::create('Review package usage and configuration.');
+
+        return $solution
+            ->setSolutionDescription('Exception: '.$this->getMessage())
+            ->setDocumentationLinks([
+                'Package documentation' => 'https://github.com/cline/huckle',
+            ]);
     }
 }
