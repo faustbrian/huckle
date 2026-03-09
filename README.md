@@ -34,12 +34,12 @@ php artisan vendor:publish --tag=huckle-config
 
 ## Documentation
 
-- **[Getting Started](cookbooks/getting-started.md)** - Installation, configuration, and basic usage
-- **[Environment Management](cookbooks/environment-management.md)** - Work with multiple environments
-- **[Exports & Syncing](cookbooks/exports-syncing.md)** - Export to .env files and environment variables
-- **[Connection Commands](cookbooks/connection-commands.md)** - Execute database CLI connections
-- **[HCL Conversion](cookbooks/hcl-conversion.md)** - Convert between HCL and JSON formats
-- **[Artisan Commands](cookbooks/artisan-commands.md)** - All available CLI commands
+- **[Getting Started](DOCS.md#doc-cookbooks-getting-started)** - Installation, configuration, and basic usage
+- **[Environment Management](DOCS.md#doc-cookbooks-environment-management)** - Work with multiple environments
+- **[Exports & Syncing](DOCS.md#doc-cookbooks-exports-syncing)** - Export to .env files and environment variables
+- **[Connection Commands](DOCS.md#doc-cookbooks-connection-commands)** - Execute database CLI connections
+- **[HCL Conversion](DOCS.md#doc-cookbooks-hcl-conversion)** - Convert between HCL and JSON formats
+- **[Artisan Commands](DOCS.md#doc-cookbooks-artisan-commands)** - All available CLI commands
 
 ## Change log
 

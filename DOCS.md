@@ -1,24 +1,26 @@
 ## Table of Contents
 
-1. Getting Started (`cookbooks/getting-started.md`)
-2. Environment Management (`cookbooks/environment-management.md`)
-3. Exports & Syncing (`cookbooks/exports-syncing.md`)
-4. Connection Commands (`cookbooks/connection-commands.md`)
-5. HCL Conversion (`cookbooks/hcl-conversion.md`)
-6. Artisan Commands (`cookbooks/artisan-commands.md`)
-7. Adding Specsuite Tests (`cookbooks/adding-specsuite-tests.md`)
-8. Config Cache Compatibility (`cookbooks/config-cache-compatibility.md`)
-9. Encryption (`cookbooks/encryption.md`)
-10. Nested Hierarchy Credentials (`cookbooks/nested-hierarchy-credentials.md`)
-11. Overview (`docs/README.md`)
-12. Artisan Commands (`docs/artisan-commands.md`)
-13. Config Cache Compatibility (`docs/config-cache-compatibility.md`)
-14. Connection Commands (`docs/connection-commands.md`)
-15. Encryption (`docs/encryption.md`)
-16. Environment Management (`docs/environment-management.md`)
-17. Exports Syncing (`docs/exports-syncing.md`)
-18. Hcl Conversion (`docs/hcl-conversion.md`)
-19. Nested Hierarchy Credentials (`docs/nested-hierarchy-credentials.md`)
+1. [Getting Started](#doc-cookbooks-getting-started) (`cookbooks/getting-started.md`)
+2. [Environment Management](#doc-cookbooks-environment-management) (`cookbooks/environment-management.md`)
+3. [Exports & Syncing](#doc-cookbooks-exports-syncing) (`cookbooks/exports-syncing.md`)
+4. [Connection Commands](#doc-cookbooks-connection-commands) (`cookbooks/connection-commands.md`)
+5. [HCL Conversion](#doc-cookbooks-hcl-conversion) (`cookbooks/hcl-conversion.md`)
+6. [Artisan Commands](#doc-cookbooks-artisan-commands) (`cookbooks/artisan-commands.md`)
+7. [Adding Specsuite Tests](#doc-cookbooks-adding-specsuite-tests) (`cookbooks/adding-specsuite-tests.md`)
+8. [Config Cache Compatibility](#doc-cookbooks-config-cache-compatibility) (`cookbooks/config-cache-compatibility.md`)
+9. [Encryption](#doc-cookbooks-encryption) (`cookbooks/encryption.md`)
+10. [Nested Hierarchy Credentials](#doc-cookbooks-nested-hierarchy-credentials) (`cookbooks/nested-hierarchy-credentials.md`)
+11. [Overview](#doc-docs-readme) (`docs/README.md`)
+12. [Artisan Commands](#doc-docs-artisan-commands) (`docs/artisan-commands.md`)
+13. [Config Cache Compatibility](#doc-docs-config-cache-compatibility) (`docs/config-cache-compatibility.md`)
+14. [Connection Commands](#doc-docs-connection-commands) (`docs/connection-commands.md`)
+15. [Encryption](#doc-docs-encryption) (`docs/encryption.md`)
+16. [Environment Management](#doc-docs-environment-management) (`docs/environment-management.md`)
+17. [Exports Syncing](#doc-docs-exports-syncing) (`docs/exports-syncing.md`)
+18. [Hcl Conversion](#doc-docs-hcl-conversion) (`docs/hcl-conversion.md`)
+19. [Nested Hierarchy Credentials](#doc-docs-nested-hierarchy-credentials) (`docs/nested-hierarchy-credentials.md`)
+<a id="doc-cookbooks-getting-started"></a>
+
 # Getting Started with Huckle
 
 Create and manage configuration using HCL syntax with environment organization, tagging, and sensitive value protection.
@@ -185,6 +187,8 @@ class DatabaseService
     }
 }
 ```
+
+<a id="doc-cookbooks-environment-management"></a>
 
 # Environment Management
 
@@ -544,6 +548,8 @@ $exports = $manager->loadEnv('path/to/config.hcl', [
 // Only fallback exports: SERVICE_A_KEY, SERVICE_A_SECRET, SERVICE_B_API_KEY
 ```
 
+<a id="doc-cookbooks-exports-syncing"></a>
+
 # Exports & Syncing
 
 Export node values as environment variables and sync them to your .env file.
@@ -749,6 +755,8 @@ class DeploymentNodeService
 php artisan tinker --execute="app(DeploymentNodeService::class)->generateEnvFile('production', '/tmp/.env.production')"
 ```
 
+<a id="doc-cookbooks-connection-commands"></a>
+
 # Connection Commands
 
 Define and execute CLI connection commands for nodes like database clients, SSH, and APIs.
@@ -940,6 +948,8 @@ php artisan huckle:connect database.production.readonly psql
 php artisan huckle:connect database.production.primary pg_dump --copy
 # Then paste and redirect: > backup.sql
 ```
+
+<a id="doc-cookbooks-hcl-conversion"></a>
 
 # HCL Conversion
 
@@ -1175,6 +1185,8 @@ $hcl = Hcl::fromJson($existingConfig);
 file_put_contents('config.hcl', $hcl);
 ```
 
+<a id="doc-cookbooks-artisan-commands"></a>
+
 # Artisan Commands
 
 All CLI commands available in Huckle for managing nodes.
@@ -1316,6 +1328,8 @@ php artisan huckle:convert:to-hcl nodes.json
 # Output to file
 php artisan huckle:convert:to-hcl nodes.json nodes.hcl
 ```
+
+<a id="doc-cookbooks-adding-specsuite-tests"></a>
 
 # Adding Specsuite Tests
 
@@ -1515,6 +1529,8 @@ test('schema_test.t defines schema errors not syntax errors', function (): void 
 - [ ] Add test using `TSpecParser` to read expectations
 - [ ] Verify error locations if diagnostics expected
 - [ ] Run `./vendor/bin/pest` to confirm tests pass
+
+<a id="doc-cookbooks-config-cache-compatibility"></a>
 
 # Config Cache Compatibility
 
@@ -1885,6 +1901,8 @@ $node->config(): array  // ['cashier.key' => 'pk_live_xxx', ...]
 // Access raw configs property
 $node->configs  // ['cashier.key' => 'self.api_key', ...] (unresolved)
 ```
+
+<a id="doc-cookbooks-encryption"></a>
 
 # Configuration Encryption
 
@@ -2330,6 +2348,8 @@ function decryptCredentialConfigs(string $environment): void
 }
 ```
 
+<a id="doc-cookbooks-nested-hierarchy-credentials"></a>
+
 # Nested Hierarchy Nodes
 
 Load nodes dynamically based on context (division, environment, provider, country) using hierarchical HCL blocks.
@@ -2741,6 +2761,8 @@ if (!$result['valid']) {
 }
 ```
 
+<a id="doc-docs-readme"></a>
+
 Create and manage nodes using HCL syntax with environment organization, tagging, and sensitive value protection.
 
 **Use case:** Managing database, API, and service nodes across development, staging, and production environments.
@@ -2906,6 +2928,8 @@ class DatabaseService
 }
 ```
 
+<a id="doc-docs-artisan-commands"></a>
+
 ## Available Commands
 
 | Command | Description |
@@ -3043,6 +3067,8 @@ php artisan huckle:json2hcl nodes.json
 # Output to file
 php artisan huckle:json2hcl nodes.json nodes.hcl
 ```
+
+<a id="doc-docs-config-cache-compatibility"></a>
 
 Make Huckle work seamlessly with Laravel's `config:cache` command.
 
@@ -3311,6 +3337,8 @@ php artisan tinker --execute="dump(config('cashier.key'))"
 php artisan config:clear
 ```
 
+<a id="doc-docs-connection-commands"></a>
+
 Define and execute CLI connection commands for nodes like database clients, SSH, and APIs.
 
 **Use case:** Quick access to database shells, SSH connections, and other CLI tools using stored nodes.
@@ -3500,6 +3528,8 @@ php artisan huckle:connect database.production.readonly psql
 php artisan huckle:connect database.production.primary pg_dump --copy
 # Then paste and redirect: > backup.sql
 ```
+
+<a id="doc-docs-encryption"></a>
 
 Encrypt and decrypt HCL configuration files for secure storage and deployment using Laravel's Encrypter with AES-256-CBC.
 
@@ -3813,6 +3843,8 @@ php artisan huckle:decrypt .huckle --key="base64:ABC123..."
 php artisan huckle:decrypt .huckle --key="..." --recursive --force
 ```
 
+<a id="doc-docs-environment-management"></a>
+
 Organize nodes by environment (development, staging, production) and switch contexts dynamically.
 
 **Use case:** Managing the same services across multiple environments with environment-specific configurations.
@@ -3937,6 +3969,8 @@ Filter by environment AND tag:
 ```bash
 php artisan huckle:list --environment=production --tag=critical
 ```
+
+<a id="doc-docs-exports-syncing"></a>
 
 Export node values to environment variables and sync them to your .env file.
 
@@ -4087,6 +4121,8 @@ php artisan huckle:lint --table
 php artisan huckle:lint --table --environment=production
 php artisan huckle:lint --table --partition=database
 ```
+
+<a id="doc-docs-hcl-conversion"></a>
 
 Convert between HCL and JSON formats for interoperability and migration.
 
@@ -4244,6 +4280,8 @@ $config = Hcl::parseFile('app.hcl');
 // Send as JSON to API
 $response = Http::post('https://api.example.com/config', $config);
 ```
+
+<a id="doc-docs-nested-hierarchy-credentials"></a>
 
 Organize credentials in deeply nested hierarchies for complex multi-tenant or multi-region setups.
 
